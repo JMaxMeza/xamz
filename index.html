@@ -1,0 +1,1248 @@
+<title>Mining Big — Alquiler de maquinaria pesada</title>
+
+<style>
+  :root {
+    --fondo:      #E8E5DE;
+    --panel:      #F3F1EC;
+    --panel-alt:  #DEDAD1;
+    --tinta:      #16191C;
+    --acero:      #5C666E;
+    --linea:      rgba(22, 25, 28, .18);
+    --linea-suave:rgba(22, 25, 28, .09);
+    --oxido:      #B24A16;
+    --oxido-sup:  rgba(178, 74, 22, .10);
+    --senal:      #D8A21A;
+    --ok:         #3F6B4A;
+
+    --display: "Arial Narrow", "Helvetica Neue Condensed", "HelveticaNeue-CondensedBold",
+               "Franklin Gothic Medium", "Liberation Sans Narrow", Impact, sans-serif;
+    --texto:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --dato:    "SF Mono", "Consolas", "Roboto Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+
+    --ancho: 1180px;
+    --sombra: 0 1px 0 var(--linea);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo:      #101316;
+      --panel:      #171B1F;
+      --panel-alt:  #1E2429;
+      --tinta:      #E7E4DD;
+      --acero:      #8D979F;
+      --linea:      rgba(231, 228, 221, .17);
+      --linea-suave:rgba(231, 228, 221, .08);
+      --oxido:      #E4713A;
+      --oxido-sup:  rgba(228, 113, 58, .12);
+      --senal:      #E8B93A;
+      --ok:         #7FB08C;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --fondo:      #101316;
+    --panel:      #171B1F;
+    --panel-alt:  #1E2429;
+    --tinta:      #E7E4DD;
+    --acero:      #8D979F;
+    --linea:      rgba(231, 228, 221, .17);
+    --linea-suave:rgba(231, 228, 221, .08);
+    --oxido:      #E4713A;
+    --oxido-sup:  rgba(228, 113, 58, .12);
+    --senal:      #E8B93A;
+    --ok:         #7FB08C;
+  }
+
+  :root[data-theme="light"] {
+    --fondo:      #E8E5DE;
+    --panel:      #F3F1EC;
+    --panel-alt:  #DEDAD1;
+    --tinta:      #16191C;
+    --acero:      #5C666E;
+    --linea:      rgba(22, 25, 28, .18);
+    --linea-suave:rgba(22, 25, 28, .09);
+    --oxido:      #B24A16;
+    --oxido-sup:  rgba(178, 74, 22, .10);
+    --senal:      #D8A21A;
+    --ok:         #3F6B4A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: var(--texto);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--oxido);
+    outline-offset: 3px;
+  }
+
+  .envoltura {
+    width: 100%;
+    max-width: var(--ancho);
+    margin-inline: auto;
+    padding-inline: 24px;
+  }
+
+  /* ─── Tipografía base ─────────────────────────────────────── */
+
+  .display {
+    font-family: var(--display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -.012em;
+    line-height: .95;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .etiqueta {
+    font-family: var(--dato);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--acero);
+    margin: 0;
+  }
+
+  .dato { font-family: var(--dato); font-variant-numeric: tabular-nums; }
+
+  /* ─── Franja de peligro ───────────────────────────────────── */
+
+  .franja {
+    height: 7px;
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--senal) 0 10px,
+      transparent 10px 20px
+    );
+    background-color: var(--tinta);
+  }
+
+  /* ─── Cabecera ────────────────────────────────────────────── */
+
+  .cabecera {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--fondo) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--linea);
+  }
+
+  .cabecera-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    min-height: 64px;
+  }
+
+  .marca {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .marca-nombre {
+    font-family: var(--display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 25px;
+    letter-spacing: .02em;
+  }
+
+  .marca-nombre em {
+    font-style: normal;
+    color: var(--oxido);
+  }
+
+  .marca-sufijo {
+    font-family: var(--dato);
+    font-size: 10px;
+    letter-spacing: .18em;
+    color: var(--acero);
+    text-transform: uppercase;
+    padding-left: 10px;
+    border-left: 1px solid var(--linea);
+  }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+
+  .nav a {
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--acero);
+    transition: color .18s ease;
+  }
+
+  .nav a:hover { color: var(--tinta); }
+
+  /* ─── Botones ─────────────────────────────────────────────── */
+
+  .boton {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 13px 22px;
+    border: 1px solid var(--oxido);
+    background: var(--oxido);
+    color: #FBF7F3;
+    cursor: pointer;
+    transition: filter .18s ease, transform .18s ease;
+  }
+
+  .boton:hover { filter: brightness(1.1); }
+  .boton:active { transform: translateY(1px); }
+
+  .boton--linea {
+    background: transparent;
+    color: var(--tinta);
+    border-color: var(--linea);
+  }
+
+  .boton--linea:hover {
+    border-color: var(--oxido);
+    color: var(--oxido);
+    filter: none;
+  }
+
+  .boton--bloque { width: 100%; justify-content: center; padding-block: 17px; }
+
+  /* ─── Secciones ───────────────────────────────────────────── */
+
+  .seccion { padding-block: clamp(56px, 8vw, 104px); }
+  .seccion--linea { border-top: 1px solid var(--linea); }
+
+  .seccion-cabeza {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin-bottom: 40px;
+  }
+
+  .seccion-cabeza h2 { font-size: clamp(30px, 4.2vw, 48px); }
+
+  .seccion-cabeza .num {
+    font-family: var(--dato);
+    font-size: 11px;
+    letter-spacing: .16em;
+    color: var(--oxido);
+    white-space: nowrap;
+    padding-top: 6px;
+  }
+
+  /* ─── Héroe ───────────────────────────────────────────────── */
+
+  .heroe { padding-block: clamp(48px, 7vw, 88px) clamp(40px, 6vw, 72px); }
+
+  .heroe-rejilla {
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: clamp(32px, 5vw, 64px);
+    align-items: center;
+  }
+
+  .heroe-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .heroe-eyebrow::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--linea);
+  }
+
+  .heroe h1 {
+    font-size: clamp(48px, 8.4vw, 104px);
+    margin-bottom: 24px;
+  }
+
+  .heroe h1 span { color: var(--oxido); }
+
+  .heroe-texto {
+    max-width: 46ch;
+    color: var(--acero);
+    font-size: 17px;
+    margin: 0 0 32px;
+  }
+
+  .heroe-acciones { display: flex; flex-wrap: wrap; gap: 14px; }
+
+  /* ─── Placa de identificación ─────────────────────────────── */
+
+  .placa {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--linea);
+    box-shadow: inset 0 0 0 1px var(--linea-suave);
+  }
+
+  /* remaches en las cuatro esquinas, por encima de los paneles internos */
+  .placa::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .55;
+    background-repeat: no-repeat;
+    background-image:
+      radial-gradient(circle at 13px 13px, var(--acero) 0 3.5px, transparent 4.5px),
+      radial-gradient(circle at calc(100% - 13px) 13px, var(--acero) 0 3.5px, transparent 4.5px),
+      radial-gradient(circle at 13px calc(100% - 13px), var(--acero) 0 3.5px, transparent 4.5px),
+      radial-gradient(circle at calc(100% - 13px) calc(100% - 13px), var(--acero) 0 3.5px, transparent 4.5px);
+  }
+
+  .placa-cabeza {
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--linea);
+  }
+
+  .placa-cabeza strong {
+    display: block;
+    font-family: var(--display);
+    text-transform: uppercase;
+    font-size: 27px;
+    letter-spacing: .02em;
+    line-height: 1.1;
+  }
+
+  .placa-filas { padding: 6px 22px 18px; }
+
+  .placa-fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding-block: 11px;
+    border-bottom: 1px dotted var(--linea);
+    font-family: var(--dato);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .placa-fila:last-child { border-bottom: 0; }
+  .placa-fila dt { color: var(--acero); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin: 0; }
+  .placa-fila dd { margin: 0; font-weight: 600; }
+
+  .placa-pie {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 22px;
+    border-top: 1px solid var(--linea);
+    background: var(--panel-alt);
+    font-family: var(--dato);
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--acero);
+  }
+
+  /* ─── Cifras ──────────────────────────────────────────────── */
+
+  .cifras {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--linea);
+    border-bottom: 1px solid var(--linea);
+  }
+
+  .cifra {
+    padding: 26px 20px;
+    border-left: 1px solid var(--linea-suave);
+  }
+
+  .cifra:first-child { border-left: 0; padding-left: 0; }
+
+  .cifra b {
+    display: block;
+    font-family: var(--display);
+    font-size: clamp(34px, 4.6vw, 52px);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+    margin-bottom: 8px;
+  }
+
+  .cifra b i { font-style: normal; color: var(--oxido); }
+
+  /* ─── Tabla de flota ──────────────────────────────────────── */
+
+  .tabla-caja { overflow-x: auto; }
+
+  table.flota {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  table.flota th {
+    text-align: left;
+    font-family: var(--dato);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--acero);
+    padding: 0 16px 12px 0;
+    border-bottom: 1px solid var(--linea);
+    white-space: nowrap;
+  }
+
+  table.flota td {
+    padding: 18px 16px 18px 0;
+    border-bottom: 1px solid var(--linea-suave);
+    vertical-align: baseline;
+  }
+
+  table.flota tbody tr { transition: background-color .18s ease; }
+  table.flota tbody tr:hover { background: var(--oxido-sup); }
+
+  .maq-nombre {
+    font-family: var(--display);
+    text-transform: uppercase;
+    font-size: 21px;
+    letter-spacing: .01em;
+    line-height: 1.1;
+    display: block;
+  }
+
+  .maq-modelo {
+    font-family: var(--dato);
+    font-size: 11px;
+    color: var(--acero);
+    letter-spacing: .06em;
+  }
+
+  .celda-dato { font-family: var(--dato); font-size: 13px; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--dato);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+
+  .chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+  }
+
+  .chip--libre    { color: var(--ok); }
+  .chip--pocas    { color: var(--oxido); }
+  .chip--pedido   { color: var(--acero); }
+
+  /* ─── Proceso ─────────────────────────────────────────────── */
+
+  .pasos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--linea);
+    border: 1px solid var(--linea);
+  }
+
+  .paso {
+    background: var(--fondo);
+    padding: 30px 26px 34px;
+  }
+
+  .paso-num {
+    font-family: var(--dato);
+    font-size: 11px;
+    letter-spacing: .18em;
+    color: var(--oxido);
+    display: block;
+    margin-bottom: 18px;
+  }
+
+  .paso h3 {
+    font-family: var(--display);
+    text-transform: uppercase;
+    font-size: 24px;
+    letter-spacing: .01em;
+    line-height: 1.1;
+    margin: 0 0 10px;
+  }
+
+  .paso p { margin: 0; color: var(--acero); font-size: 15px; }
+
+  /* ─── Condiciones ─────────────────────────────────────────── */
+
+  .condiciones {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+  }
+
+  .condicion { border-top: 2px solid var(--tinta); padding-top: 16px; }
+  .condicion h3 { font-family: var(--dato); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 8px; }
+  .condicion p { margin: 0; font-size: 14px; color: var(--acero); }
+
+  /* ─── Registro ────────────────────────────────────────────── */
+
+  .registro { background: var(--panel); border-top: 1px solid var(--linea); }
+
+  .registro-rejilla {
+    display: grid;
+    grid-template-columns: .8fr 1.2fr;
+    gap: clamp(32px, 5vw, 72px);
+    align-items: start;
+  }
+
+  .registro-copia h2 { font-size: clamp(32px, 4.6vw, 52px); margin-bottom: 20px; }
+  .registro-copia p { color: var(--acero); max-width: 40ch; }
+
+  .lista-check { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 14px; }
+
+  .lista-check li {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: 12px;
+    font-size: 15px;
+    align-items: start;
+  }
+
+  .lista-check li::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    margin-top: 7px;
+    background: var(--oxido);
+  }
+
+  /* Ficha de registro */
+
+  .ficha {
+    background: var(--fondo);
+    border: 1px solid var(--linea);
+    position: relative;
+  }
+
+  .ficha-cabeza {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 26px;
+    border-bottom: 1px solid var(--linea);
+    background: var(--panel-alt);
+  }
+
+  .ficha-cabeza strong {
+    font-family: var(--display);
+    text-transform: uppercase;
+    font-size: 19px;
+    letter-spacing: .04em;
+  }
+
+  .ficha-cuerpo { padding: 28px 26px 30px; }
+
+  .campos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .campo { display: flex; flex-direction: column; gap: 7px; }
+  .campo--ancho { grid-column: 1 / -1; }
+
+  .campo label {
+    font-family: var(--dato);
+    font-size: 10px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--acero);
+  }
+
+  .campo label span { color: var(--oxido); }
+
+  .campo input,
+  .campo select,
+  .campo textarea {
+    font-family: var(--texto);
+    font-size: 15px;
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--linea);
+    padding: 8px 2px;
+    transition: border-color .18s ease;
+  }
+
+  .campo textarea { resize: vertical; min-height: 68px; }
+
+  .campo input:hover,
+  .campo select:hover,
+  .campo textarea:hover { border-bottom-color: var(--acero); }
+
+  .campo input:focus,
+  .campo select:focus,
+  .campo textarea:focus {
+    outline: none;
+    border-bottom-color: var(--oxido);
+    border-bottom-width: 2px;
+    padding-bottom: 7px;
+  }
+
+  .campo select { appearance: none; cursor: pointer; }
+
+  .campo-select { position: relative; display: flex; flex-direction: column; gap: 7px; }
+  .campo-select::after {
+    content: "";
+    position: absolute;
+    right: 4px;
+    bottom: 17px;
+    width: 7px;
+    height: 7px;
+    border-right: 1px solid var(--acero);
+    border-bottom: 1px solid var(--acero);
+    transform: rotate(45deg);
+    pointer-events: none;
+  }
+
+  .equipos {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 2px;
+  }
+
+  .equipo-op input { position: absolute; opacity: 0; pointer-events: none; }
+
+  .equipo-op span {
+    display: inline-block;
+    font-family: var(--dato);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 8px 13px;
+    border: 1px solid var(--linea);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .16s ease, background-color .16s ease, color .16s ease;
+  }
+
+  .equipo-op span:hover { border-color: var(--acero); }
+
+  .equipo-op input:checked + span {
+    border-color: var(--oxido);
+    background: var(--oxido);
+    color: #FBF7F3;
+  }
+
+  .equipo-op input:focus-visible + span { outline: 2px solid var(--oxido); outline-offset: 3px; }
+
+  .ficha-pie {
+    display: grid;
+    gap: 16px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px dotted var(--linea);
+  }
+
+  .aviso { font-size: 12px; color: var(--acero); margin: 0; }
+
+  /* Confirmación */
+
+  .confirmacion { display: none; padding: 44px 26px 48px; text-align: left; }
+  .confirmacion[data-visible="true"] { display: block; }
+
+  .confirmacion .sello {
+    display: inline-block;
+    font-family: var(--dato);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--oxido);
+    border: 2px solid var(--oxido);
+    padding: 8px 14px;
+    transform: rotate(-2.5deg);
+    margin-bottom: 24px;
+  }
+
+  .confirmacion h3 {
+    font-family: var(--display);
+    text-transform: uppercase;
+    font-size: clamp(28px, 4vw, 40px);
+    margin: 0 0 14px;
+    line-height: 1;
+  }
+
+  .confirmacion p { color: var(--acero); max-width: 44ch; margin: 0 0 24px; }
+
+  .folio {
+    font-family: var(--dato);
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    letter-spacing: .1em;
+    border-top: 1px solid var(--linea);
+    padding-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* ─── Pie ─────────────────────────────────────────────────── */
+
+  .pie { border-top: 1px solid var(--linea); padding-block: 44px 52px; }
+
+  .pie-rejilla {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 28px;
+    align-items: flex-start;
+  }
+
+  .pie-contacto { display: grid; gap: 6px; font-family: var(--dato); font-size: 13px; }
+  .pie-contacto a { text-decoration: none; }
+  .pie-contacto a:hover { color: var(--oxido); }
+
+  .pie-legal { font-size: 12px; color: var(--acero); margin: 32px 0 0; }
+
+  /* ─── Movimiento ──────────────────────────────────────────── */
+
+  .revelar { opacity: 0; transform: translateY(14px); }
+
+  .revelar[data-visto="true"] {
+    opacity: 1;
+    transform: none;
+    transition: opacity .55s ease, transform .55s cubic-bezier(.22, .8, .3, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .revelar { opacity: 1; transform: none; transition: none; }
+    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+
+  /* ─── Adaptable ───────────────────────────────────────────── */
+
+  @media (max-width: 900px) {
+    .heroe-rejilla,
+    .registro-rejilla { grid-template-columns: 1fr; }
+    .cifras { grid-template-columns: 1fr 1fr; }
+    .cifra { border-left: 1px solid var(--linea-suave); padding-inline: 18px; }
+    .cifra:first-child, .cifra:nth-child(3) { border-left: 0; padding-left: 0; }
+    .cifra:nth-child(3), .cifra:nth-child(4) { border-top: 1px solid var(--linea-suave); }
+    .pasos { grid-template-columns: 1fr; }
+    .condiciones { grid-template-columns: 1fr 1fr; }
+    .nav { display: none; }
+  }
+
+  @media (max-width: 620px) {
+    .campos { grid-template-columns: 1fr; }
+    .condiciones { grid-template-columns: 1fr; }
+    .marca-sufijo { display: none; }
+    .ficha-cuerpo { padding-inline: 20px; }
+  }
+</style>
+
+<div class="franja" aria-hidden="true"></div>
+
+<header class="cabecera">
+  <div class="envoltura cabecera-fila">
+    <a class="marca" href="#top">
+      <span class="marca-nombre">Mining <em>Big</em></span>
+      <span class="marca-sufijo">Equipo pesado en alquiler</span>
+    </a>
+    <nav class="nav">
+      <a href="#flota">Flota</a>
+      <a href="#proceso">Proceso</a>
+      <a href="#condiciones">Condiciones</a>
+    </nav>
+    <a class="boton" href="#registro">Registrarse</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HÉROE -->
+  <section class="seccion heroe">
+    <div class="envoltura heroe-rejilla">
+      <div>
+        <div class="heroe-eyebrow">
+          <p class="etiqueta">Alquiler por día · semana · proyecto</p>
+        </div>
+        <h1 class="display">Fierro pesado,<br>listo para entrar <span>a mina</span></h1>
+        <p class="heroe-texto">
+          Excavadoras, volquetes, cargadores y perforadoras con mantenimiento al día,
+          operador certificado y traslado a obra. Regístrate y accede al catálogo con
+          disponibilidad y tarifas en tiempo real.
+        </p>
+        <div class="heroe-acciones">
+          <a class="boton" href="#registro">Crear mi registro</a>
+          <a class="boton boton--linea" href="#flota">Ver la flota</a>
+        </div>
+      </div>
+
+      <aside class="placa" aria-label="Ficha de flota">
+        <div class="placa-cabeza">
+          <p class="etiqueta">Placa de identificación</p>
+          <strong>Flota 2026</strong>
+        </div>
+        <dl class="placa-filas">
+          <div class="placa-fila"><dt>Unidades operativas</dt><dd>128</dd></div>
+          <div class="placa-fila"><dt>Peso operativo máx.</dt><dd>96 t</dd></div>
+          <div class="placa-fila"><dt>Cucharón máx.</dt><dd>6.5 m³</dd></div>
+          <div class="placa-fila"><dt>Altitud de trabajo</dt><dd>hasta 4 800 msnm</dd></div>
+          <div class="placa-fila"><dt>Horómetro promedio</dt><dd>3 240 h</dd></div>
+          <div class="placa-fila"><dt>Despacho a obra</dt><dd>24 – 72 h</dd></div>
+        </dl>
+        <div class="placa-pie">
+          <span>Serie MB · 2026</span>
+          <span>Rev. 04</span>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- CIFRAS -->
+  <section>
+    <div class="envoltura">
+      <div class="cifras">
+        <div class="cifra revelar">
+          <b class="dato">128</b>
+          <p class="etiqueta">Máquinas en flota</p>
+        </div>
+        <div class="cifra revelar">
+          <b class="dato">6</b>
+          <p class="etiqueta">Regiones con base</p>
+        </div>
+        <div class="cifra revelar">
+          <b class="dato">24<i>h</i></b>
+          <p class="etiqueta">Respuesta a solicitud</p>
+        </div>
+        <div class="cifra revelar">
+          <b class="dato">97<i>%</i></b>
+          <p class="etiqueta">Disponibilidad mecánica</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLOTA -->
+  <section class="seccion" id="flota">
+    <div class="envoltura">
+      <div class="seccion-cabeza">
+        <span class="num">Cat. 01</span>
+        <h2 class="display">Qué hay disponible</h2>
+      </div>
+
+      <div class="tabla-caja">
+        <table class="flota">
+          <thead>
+            <tr>
+              <th scope="col">Equipo</th>
+              <th scope="col">Capacidad</th>
+              <th scope="col">Potencia</th>
+              <th scope="col">Peso op.</th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Excavadora de orugas</span>
+                <span class="maq-modelo">MB-EX 360 · clase 36 t</span>
+              </td>
+              <td class="celda-dato">1.9 m³</td>
+              <td class="celda-dato">268 hp</td>
+              <td class="celda-dato">36.2 t</td>
+              <td><span class="chip chip--libre">Disponible</span></td>
+            </tr>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Volquete 15 m³</span>
+                <span class="maq-modelo">MB-VQ 8×4 · roquero</span>
+              </td>
+              <td class="celda-dato">15 m³ / 25 t</td>
+              <td class="celda-dato">420 hp</td>
+              <td class="celda-dato">17.5 t</td>
+              <td><span class="chip chip--libre">Disponible</span></td>
+            </tr>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Cargador frontal</span>
+                <span class="maq-modelo">MB-CF 950 · articulado</span>
+              </td>
+              <td class="celda-dato">3.4 m³</td>
+              <td class="celda-dato">300 hp</td>
+              <td class="celda-dato">22.8 t</td>
+              <td><span class="chip chip--pocas">Últimas 3</span></td>
+            </tr>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Tractor de orugas</span>
+                <span class="maq-modelo">MB-TO D8 · hoja SU</span>
+              </td>
+              <td class="celda-dato">8.7 m³ hoja</td>
+              <td class="celda-dato">354 hp</td>
+              <td class="celda-dato">39.1 t</td>
+              <td><span class="chip chip--libre">Disponible</span></td>
+            </tr>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Motoniveladora</span>
+                <span class="maq-modelo">MB-MN 140 · 12 pies</span>
+              </td>
+              <td class="celda-dato">3.7 m hoja</td>
+              <td class="celda-dato">193 hp</td>
+              <td class="celda-dato">18.6 t</td>
+              <td><span class="chip chip--pocas">Últimas 2</span></td>
+            </tr>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Perforadora hidráulica</span>
+                <span class="maq-modelo">MB-PH 5 · banco 102 mm</span>
+              </td>
+              <td class="celda-dato">Ø 89 – 127 mm</td>
+              <td class="celda-dato">243 hp</td>
+              <td class="celda-dato">24.0 t</td>
+              <td><span class="chip chip--pedido">Bajo pedido</span></td>
+            </tr>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Rodillo compactador</span>
+                <span class="maq-modelo">MB-RC 11 · liso vibratorio</span>
+              </td>
+              <td class="celda-dato">2.13 m ancho</td>
+              <td class="celda-dato">130 hp</td>
+              <td class="celda-dato">11.4 t</td>
+              <td><span class="chip chip--libre">Disponible</span></td>
+            </tr>
+            <tr class="revelar">
+              <td>
+                <span class="maq-nombre">Grúa telescópica</span>
+                <span class="maq-modelo">MB-GT 60 · todo terreno</span>
+              </td>
+              <td class="celda-dato">60 t · 48 m</td>
+              <td class="celda-dato">367 hp</td>
+              <td class="celda-dato">48.0 t</td>
+              <td><span class="chip chip--pedido">Bajo pedido</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROCESO -->
+  <section class="seccion seccion--linea" id="proceso">
+    <div class="envoltura">
+      <div class="seccion-cabeza">
+        <span class="num">Fase 01 → 03</span>
+        <h2 class="display">De registro a máquina en obra</h2>
+      </div>
+
+      <div class="pasos">
+        <article class="paso revelar">
+          <span class="paso-num">Fase 01</span>
+          <h3>Te registras</h3>
+          <p>
+            Dejas tus datos y el tipo de equipo que necesitas. Toma menos de un minuto
+            y no pedimos ningún pago para abrir la cuenta.
+          </p>
+        </article>
+        <article class="paso revelar">
+          <span class="paso-num">Fase 02</span>
+          <h3>Recibes cotización</h3>
+          <p>
+            Un asesor revisa el frente de trabajo y te envía tarifa por hora, día o mes,
+            con disponibilidad real y fecha de despacho.
+          </p>
+        </article>
+        <article class="paso revelar">
+          <span class="paso-num">Fase 03</span>
+          <h3>Llega a tu frente</h3>
+          <p>
+            Coordinamos traslado en cama baja, entrega con checklist firmado y
+            operador certificado si lo necesitas.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONDICIONES -->
+  <section class="seccion seccion--linea" id="condiciones">
+    <div class="envoltura">
+      <div class="seccion-cabeza">
+        <span class="num">Cond. 01</span>
+        <h2 class="display">Lo que va incluido</h2>
+      </div>
+
+      <div class="condiciones">
+        <div class="condicion revelar">
+          <h3>Mantenimiento</h3>
+          <p>Preventivo programado por horómetro y correctivo en sitio, sin cargo adicional.</p>
+        </div>
+        <div class="condicion revelar">
+          <h3>Operador certificado</h3>
+          <p>Personal con acreditación vigente en seguridad minera, opcional por turno.</p>
+        </div>
+        <div class="condicion revelar">
+          <h3>Traslado</h3>
+          <p>Cama baja propia, permisos de ruta y descarga en el frente de trabajo.</p>
+        </div>
+        <div class="condicion revelar">
+          <h3>Póliza y respaldo</h3>
+          <p>Equipo asegurado y unidad de reemplazo si una máquina sale de servicio.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REGISTRO -->
+  <section class="seccion registro" id="registro">
+    <div class="envoltura registro-rejilla">
+
+      <div class="registro-copia">
+        <p class="etiqueta">Registro de cliente</p>
+        <h2 class="display">Abre tu cuenta</h2>
+        <p>
+          El registro es gratuito y sin compromiso de alquiler. Es lo único que
+          necesitas para ver tarifas y reservar equipo.
+        </p>
+        <ul class="lista-check">
+          <li><span>Catálogo completo con disponibilidad al día</span></li>
+          <li><span>Tarifas por hora, día, mes o proyecto</span></li>
+          <li><span>Un asesor asignado a tu operación</span></li>
+          <li><span>Historial de alquileres y documentación en un solo lugar</span></li>
+        </ul>
+      </div>
+
+      <div class="ficha">
+        <div class="ficha-cabeza">
+          <strong>Orden de registro</strong>
+          <span class="etiqueta">Form. MB-01</span>
+        </div>
+
+        <form class="ficha-cuerpo" id="form-registro" novalidate>
+          <div class="campos">
+
+            <div class="campo">
+              <label for="nombre">Nombre y apellido <span>*</span></label>
+              <input type="text" id="nombre" name="nombre" autocomplete="name" required>
+            </div>
+
+            <div class="campo">
+              <label for="empresa">Empresa <span>*</span></label>
+              <input type="text" id="empresa" name="empresa" autocomplete="organization" required>
+            </div>
+
+            <div class="campo">
+              <label for="email">Correo corporativo <span>*</span></label>
+              <input type="email" id="email" name="email" autocomplete="email" required>
+            </div>
+
+            <div class="campo">
+              <label for="telefono">Teléfono <span>*</span></label>
+              <input type="tel" id="telefono" name="telefono" autocomplete="tel" required>
+            </div>
+
+            <div class="campo-select">
+              <label for="zona">Zona de operación</label>
+              <select id="zona" name="zona">
+                <option value="">Selecciona una zona</option>
+                <option>Norte</option>
+                <option>Centro</option>
+                <option>Sur</option>
+                <option>Oriente</option>
+                <option>Otra / varias</option>
+              </select>
+            </div>
+
+            <div class="campo-select">
+              <label for="plazo">Plazo estimado</label>
+              <select id="plazo" name="plazo">
+                <option value="">Selecciona un plazo</option>
+                <option>Por días</option>
+                <option>Por semanas</option>
+                <option>Por meses</option>
+                <option>Proyecto completo</option>
+              </select>
+            </div>
+
+            <div class="campo campo--ancho">
+              <label>Equipo que te interesa</label>
+            </div>
+
+            <div class="equipos">
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Excavadora"><span>Excavadora</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Volquete"><span>Volquete</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Cargador"><span>Cargador</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Tractor"><span>Tractor</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Motoniveladora"><span>Motoniveladora</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Perforadora"><span>Perforadora</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Rodillo"><span>Rodillo</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Grua"><span>Grúa</span></label>
+            </div>
+
+            <div class="campo campo--ancho">
+              <label for="detalle">Detalle del frente de trabajo</label>
+              <textarea id="detalle" name="detalle" placeholder="Altitud, tipo de material, turnos, fecha de inicio…"></textarea>
+            </div>
+
+          </div>
+
+          <div class="ficha-pie">
+            <p class="aviso" id="mensaje-error" role="status"></p>
+            <button class="boton boton--bloque" type="submit">Enviar registro</button>
+            <p class="aviso">
+              Sin costo y sin compromiso. Usamos tus datos solo para contactarte
+              sobre el alquiler.
+            </p>
+          </div>
+        </form>
+
+        <div class="confirmacion" id="confirmacion" role="status" aria-live="polite">
+          <span class="sello">Registro recibido</span>
+          <h3>Listo, <span id="conf-nombre">te anotamos</span></h3>
+          <p>
+            Un asesor de Mining Big te escribe dentro de las próximas 24 horas hábiles
+            con disponibilidad y tarifa para tu frente de trabajo.
+          </p>
+          <div class="folio">
+            <span>Folio <b id="conf-folio">MB-000000</b></span>
+            <span id="conf-fecha">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="pie">
+  <div class="envoltura">
+    <div class="pie-rejilla">
+      <div>
+        <span class="marca-nombre">Mining <em>Big</em></span>
+        <p class="etiqueta" style="margin-top:8px">Alquiler de maquinaria pesada para minería y obra civil</p>
+      </div>
+      <div class="pie-contacto">
+        <a href="mailto:registro@miningbig.com">registro@miningbig.com</a>
+        <a href="tel:+000000000">+00 000 000 000</a>
+        <span style="color:var(--acero)">Lun a sáb · 07:00 – 19:00</span>
+      </div>
+    </div>
+    <p class="pie-legal">© 2026 Mining Big. Todos los datos de flota son referenciales y se confirman en la cotización.</p>
+  </div>
+</footer>
+
+<div class="franja" aria-hidden="true"></div>
+
+<script>
+  (function () {
+    // Revelado al hacer scroll
+    var reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var objetivos = document.querySelectorAll(".revelar");
+
+    if (reducido || !("IntersectionObserver" in window)) {
+      objetivos.forEach(function (el) { el.setAttribute("data-visto", "true"); });
+    } else {
+      var observador = new IntersectionObserver(function (entradas) {
+        entradas.forEach(function (entrada, i) {
+          if (!entrada.isIntersecting) return;
+          var el = entrada.target;
+          setTimeout(function () { el.setAttribute("data-visto", "true"); }, i * 60);
+          observador.unobserve(el);
+        });
+      }, { threshold: 0.15, rootMargin: "0px 0px -40px 0px" });
+
+      objetivos.forEach(function (el) { observador.observe(el); });
+    }
+
+    // Envío del formulario
+    var form = document.getElementById("form-registro");
+    var confirmacion = document.getElementById("confirmacion");
+    var error = document.getElementById("mensaje-error");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      var obligatorios = ["nombre", "empresa", "email", "telefono"];
+      var faltante = null;
+
+      for (var i = 0; i < obligatorios.length; i++) {
+        var campo = document.getElementById(obligatorios[i]);
+        if (!campo.value.trim()) { faltante = campo; break; }
+      }
+
+      var email = document.getElementById("email");
+      var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.value.trim());
+
+      if (faltante) {
+        error.textContent = "Falta completar un campo obligatorio para enviar el registro.";
+        error.style.color = "var(--oxido)";
+        faltante.focus();
+        return;
+      }
+
+      if (!emailOk) {
+        error.textContent = "Revisa el correo: no tiene un formato válido.";
+        error.style.color = "var(--oxido)";
+        email.focus();
+        return;
+      }
+
+      error.textContent = "";
+
+      var nombre = document.getElementById("nombre").value.trim().split(/\s+/)[0];
+      var folio = "MB-" + String(Math.floor(100000 + Math.random() * 899999));
+      var hoy = new Date();
+      var fecha = String(hoy.getDate()).padStart(2, "0") + "/" +
+                  String(hoy.getMonth() + 1).padStart(2, "0") + "/" +
+                  hoy.getFullYear();
+
+      document.getElementById("conf-nombre").textContent = nombre;
+      document.getElementById("conf-folio").textContent = folio;
+      document.getElementById("conf-fecha").textContent = fecha;
+
+      form.style.display = "none";
+      confirmacion.setAttribute("data-visible", "true");
+      confirmacion.scrollIntoView({ behavior: reducido ? "auto" : "smooth", block: "center" });
+    });
+  })();
+</script>
