@@ -533,7 +533,8 @@
   function alternarBot() {
     if (!chatAbierto) return;
     var conv = conversacionDe(chatAbierto);
-    var nuevo = conv && conv.bot_activo === false; // si estaba apagado, encender
+    var actual = !(conv && conv.bot_activo === false); // sin fila o sin valor = encendido
+    var nuevo = !actual;
     if (conv) conv.bot_activo = nuevo;
     else datos.conversaciones.push({ telefono: chatAbierto, bot_activo: nuevo });
     pintarChat(chatAbierto, true);
