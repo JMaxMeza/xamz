@@ -23,12 +23,28 @@ HTML, el CSS y el JS embebidos.
 
 Cada `git push` a `main` vuelve a desplegar automáticamente.
 
-## Pendiente
+## Captura de registros
 
-El formulario de registro **no persiste los datos todavía**. Valida en el cliente
-y muestra una confirmación con folio, pero no envía nada a ningún servidor.
-Para que capte registros de verdad hay que apuntar el `submit` a un endpoint
-(webhook de n8n, Formspree, o una función serverless en `api/`).
+El formulario **sí persiste los datos**. Hace `POST` a un webhook de n8n:
+
+```
+https://m4xx.app.n8n.cloud/webhook/registro-mining-big
+```
+
+La URL está en la constante `ENDPOINT_REGISTRO`, arriba del `<script>`.
+
+El **folio lo genera el servidor** y vuelve en la respuesta — el que ve el
+cliente es el mismo que queda guardado en la base. Si el envío falla, la landing
+muestra un mensaje de error y **no** muestra folio: prometer un registro que no
+se guardó sería peor que fallar de forma visible.
+
+Los registros van a la data table `registros_mining_big` de n8n, con el campo
+`atendido` en `false` para poder filtrar los pendientes.
+
+## Pendiente
 
 Los datos de flota, teléfono y correo del pie son de ejemplo y hay que
 reemplazarlos por los reales antes de difundir el enlace.
+
+El webhook es **público y sin autenticación**. Si empieza a llegar spam, hay que
+activar Header Auth en el nodo Webhook y mandar la cabecera desde la landing.

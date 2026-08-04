@@ -1,4 +1,18 @@
-<title>Mining Big — Alquiler de maquinaria pesada</title>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mining Big</title>
+<meta name="description" content="Alquiler de excavadoras, volquetes, cargadores y perforadoras para minería y obra civil. Regístrate y accede al catálogo con disponibilidad y tarifas.">
+<meta name="theme-color" content="#E8E5DE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101316" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mining Big">
+<meta property="og:description" content="Fierro pesado, listo para entrar a mina. Regístrate y accede al catálogo con disponibilidad y tarifas.">
+<meta property="og:locale" content="es_ES">
 
 <style>
   :root {
@@ -20,7 +34,11 @@
     --dato:    "SF Mono", "Consolas", "Roboto Mono", "DejaVu Sans Mono", ui-monospace, monospace;
 
     --ancho: 1180px;
-    --sombra: 0 1px 0 var(--linea);
+    --margen: clamp(18px, 4vw, 24px);
+
+    /* color del calado de los pictogramas: debe igualar el fondo sobre el
+       que se dibuja la máquina, y se redefine en cada contexto */
+    --hueco: var(--fondo);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -69,6 +87,15 @@
 
   * { box-sizing: border-box; }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
   body {
     margin: 0;
     background: var(--fondo);
@@ -76,9 +103,12 @@
     font-family: var(--texto);
     font-size: 16px;
     line-height: 1.6;
+    overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: rgba(178, 74, 22, .18);
   }
 
+  img, svg { max-width: 100%; }
   a { color: inherit; }
 
   :focus-visible {
@@ -90,8 +120,10 @@
     width: 100%;
     max-width: var(--ancho);
     margin-inline: auto;
-    padding-inline: 24px;
+    padding-inline: var(--margen);
   }
+
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 
   /* ─── Tipografía base ─────────────────────────────────────── */
 
@@ -134,7 +166,7 @@
     position: sticky;
     top: 0;
     z-index: 20;
-    background: color-mix(in srgb, var(--fondo) 88%, transparent);
+    background: color-mix(in srgb, var(--fondo) 90%, transparent);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--linea);
   }
@@ -143,8 +175,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    min-height: 64px;
+    gap: 16px;
+    min-height: 60px;
   }
 
   .marca {
@@ -152,14 +184,16 @@
     align-items: baseline;
     gap: 10px;
     text-decoration: none;
+    min-width: 0;
   }
 
   .marca-nombre {
     font-family: var(--display);
     font-weight: 700;
     text-transform: uppercase;
-    font-size: 25px;
+    font-size: clamp(21px, 5vw, 25px);
     letter-spacing: .02em;
+    white-space: nowrap;
   }
 
   .marca-nombre em {
@@ -200,13 +234,15 @@
   .boton {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     font-family: var(--dato);
     font-size: 12px;
     letter-spacing: .13em;
     text-transform: uppercase;
     text-decoration: none;
-    padding: 13px 22px;
+    padding: 14px 22px;
+    min-height: 46px;
     border: 1px solid var(--oxido);
     background: var(--oxido);
     color: #FBF7F3;
@@ -229,21 +265,22 @@
     filter: none;
   }
 
-  .boton--bloque { width: 100%; justify-content: center; padding-block: 17px; }
+  .boton--compacto { padding-inline: 16px; }
+  .boton--bloque { width: 100%; padding-block: 17px; }
 
   /* ─── Secciones ───────────────────────────────────────────── */
 
-  .seccion { padding-block: clamp(56px, 8vw, 104px); }
+  .seccion { padding-block: clamp(44px, 8vw, 104px); }
   .seccion--linea { border-top: 1px solid var(--linea); }
 
   .seccion-cabeza {
     display: flex;
     align-items: baseline;
     gap: 18px;
-    margin-bottom: 40px;
+    margin-bottom: clamp(28px, 5vw, 40px);
   }
 
-  .seccion-cabeza h2 { font-size: clamp(30px, 4.2vw, 48px); }
+  .seccion-cabeza h2 { font-size: clamp(28px, 6vw, 48px); }
 
   .seccion-cabeza .num {
     font-family: var(--dato);
@@ -256,7 +293,7 @@
 
   /* ─── Héroe ───────────────────────────────────────────────── */
 
-  .heroe { padding-block: clamp(48px, 7vw, 88px) clamp(40px, 6vw, 72px); }
+  .heroe { padding-block: clamp(36px, 7vw, 88px) clamp(32px, 6vw, 72px); }
 
   .heroe-rejilla {
     display: grid;
@@ -269,7 +306,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 22px;
+    margin-bottom: 20px;
   }
 
   .heroe-eyebrow::after {
@@ -280,8 +317,8 @@
   }
 
   .heroe h1 {
-    font-size: clamp(48px, 8.4vw, 104px);
-    margin-bottom: 24px;
+    font-size: clamp(40px, 9vw, 104px);
+    margin-bottom: 22px;
   }
 
   .heroe h1 span { color: var(--oxido); }
@@ -289,15 +326,16 @@
   .heroe-texto {
     max-width: 46ch;
     color: var(--acero);
-    font-size: 17px;
-    margin: 0 0 32px;
+    font-size: clamp(15px, 3.6vw, 17px);
+    margin: 0 0 30px;
   }
 
-  .heroe-acciones { display: flex; flex-wrap: wrap; gap: 14px; }
+  .heroe-acciones { display: flex; flex-wrap: wrap; gap: 12px; }
 
   /* ─── Placa de identificación ─────────────────────────────── */
 
   .placa {
+    --hueco: var(--panel);
     position: relative;
     background: var(--panel);
     border: 1px solid var(--linea);
@@ -319,8 +357,17 @@
       radial-gradient(circle at calc(100% - 13px) calc(100% - 13px), var(--acero) 0 3.5px, transparent 4.5px);
   }
 
+  .placa-dibujo {
+    display: block;
+    width: 100%;
+    height: auto;
+    padding: 26px 26px 6px;
+    color: var(--tinta);
+    opacity: .9;
+  }
+
   .placa-cabeza {
-    padding: 20px 22px 16px;
+    padding: 6px 22px 16px;
     border-bottom: 1px solid var(--linea);
   }
 
@@ -328,12 +375,12 @@
     display: block;
     font-family: var(--display);
     text-transform: uppercase;
-    font-size: 27px;
+    font-size: clamp(23px, 5vw, 27px);
     letter-spacing: .02em;
     line-height: 1.1;
   }
 
-  .placa-filas { padding: 6px 22px 18px; }
+  .placa-filas { padding: 6px 22px 18px; margin: 0; }
 
   .placa-fila {
     display: flex;
@@ -365,12 +412,47 @@
     color: var(--acero);
   }
 
+  /* ─── Friso de flota ──────────────────────────────────────── */
+
+  .friso {
+    --hueco: var(--panel);
+    border-block: 1px solid var(--linea);
+    background: var(--panel);
+    padding-block: clamp(22px, 4vw, 34px);
+    overflow: hidden;
+  }
+
+  .friso-pista {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(24px, 5vw, 52px);
+    color: var(--tinta);
+    opacity: .82;
+    width: max-content;
+    animation: desfile 46s linear infinite;
+  }
+
+  .friso-pista svg {
+    width: clamp(96px, 15vw, 148px);
+    height: auto;
+    flex: none;
+  }
+
+  @keyframes desfile {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .friso-pista { animation: none; }
+    .friso { overflow-x: auto; }
+  }
+
   /* ─── Cifras ──────────────────────────────────────────────── */
 
   .cifras {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    border-top: 1px solid var(--linea);
     border-bottom: 1px solid var(--linea);
   }
 
@@ -384,7 +466,7 @@
   .cifra b {
     display: block;
     font-family: var(--display);
-    font-size: clamp(34px, 4.6vw, 52px);
+    font-size: clamp(30px, 7vw, 52px);
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -396,11 +478,8 @@
 
   /* ─── Tabla de flota ──────────────────────────────────────── */
 
-  .tabla-caja { overflow-x: auto; }
-
   table.flota {
     width: 100%;
-    min-width: 720px;
     border-collapse: collapse;
     font-variant-numeric: tabular-nums;
   }
@@ -419,18 +498,31 @@
   }
 
   table.flota td {
-    padding: 18px 16px 18px 0;
+    padding: 16px 16px 16px 0;
     border-bottom: 1px solid var(--linea-suave);
-    vertical-align: baseline;
+    vertical-align: middle;
   }
 
   table.flota tbody tr { transition: background-color .18s ease; }
   table.flota tbody tr:hover { background: var(--oxido-sup); }
 
+  .maq {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .maq-icono {
+    width: 62px;
+    height: 37px;
+    flex: none;
+    color: var(--oxido);
+  }
+
   .maq-nombre {
     font-family: var(--display);
     text-transform: uppercase;
-    font-size: 21px;
+    font-size: clamp(19px, 4.4vw, 21px);
     letter-spacing: .01em;
     line-height: 1.1;
     display: block;
@@ -465,9 +557,9 @@
     background: currentColor;
   }
 
-  .chip--libre    { color: var(--ok); }
-  .chip--pocas    { color: var(--oxido); }
-  .chip--pedido   { color: var(--acero); }
+  .chip--libre  { color: var(--ok); }
+  .chip--pocas  { color: var(--oxido); }
+  .chip--pedido { color: var(--acero); }
 
   /* ─── Proceso ─────────────────────────────────────────────── */
 
@@ -481,7 +573,7 @@
 
   .paso {
     background: var(--fondo);
-    padding: 30px 26px 34px;
+    padding: 28px 24px 32px;
   }
 
   .paso-num {
@@ -490,13 +582,13 @@
     letter-spacing: .18em;
     color: var(--oxido);
     display: block;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
   }
 
   .paso h3 {
     font-family: var(--display);
     text-transform: uppercase;
-    font-size: 24px;
+    font-size: clamp(22px, 5vw, 24px);
     letter-spacing: .01em;
     line-height: 1.1;
     margin: 0 0 10px;
@@ -509,7 +601,7 @@
   .condiciones {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 28px;
+    gap: clamp(22px, 3vw, 28px);
   }
 
   .condicion { border-top: 2px solid var(--tinta); padding-top: 16px; }
@@ -527,15 +619,15 @@
     align-items: start;
   }
 
-  .registro-copia h2 { font-size: clamp(32px, 4.6vw, 52px); margin-bottom: 20px; }
+  .registro-copia h2 { font-size: clamp(30px, 6vw, 52px); margin-bottom: 18px; }
   .registro-copia p { color: var(--acero); max-width: 40ch; }
 
-  .lista-check { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 14px; }
+  .lista-check { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 14px; }
 
   .lista-check li {
     display: grid;
-    grid-template-columns: 18px 1fr;
-    gap: 12px;
+    grid-template-columns: 10px 1fr;
+    gap: 14px;
     font-size: 15px;
     align-items: start;
   }
@@ -561,7 +653,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    padding: 18px 26px;
+    padding: 16px var(--margen);
     border-bottom: 1px solid var(--linea);
     background: var(--panel-alt);
   }
@@ -573,7 +665,7 @@
     letter-spacing: .04em;
   }
 
-  .ficha-cuerpo { padding: 28px 26px 30px; }
+  .ficha-cuerpo { padding: 26px var(--margen) 28px; }
 
   .campos {
     display: grid;
@@ -581,10 +673,10 @@
     gap: 20px;
   }
 
-  .campo { display: flex; flex-direction: column; gap: 7px; }
+  .campo, .campo-select { display: flex; flex-direction: column; gap: 7px; }
   .campo--ancho { grid-column: 1 / -1; }
 
-  .campo label {
+  .campo label, .campo-select label {
     font-family: var(--dato);
     font-size: 10px;
     letter-spacing: .15em;
@@ -595,41 +687,44 @@
   .campo label span { color: var(--oxido); }
 
   .campo input,
-  .campo select,
+  .campo-select select,
   .campo textarea {
     font-family: var(--texto);
-    font-size: 15px;
+    /* 16px evita el zoom automático de iOS al enfocar un campo */
+    font-size: 16px;
     color: var(--tinta);
     background: transparent;
     border: 0;
     border-bottom: 1px solid var(--linea);
-    padding: 8px 2px;
+    border-radius: 0;
+    padding: 10px 2px;
+    min-height: 44px;
     transition: border-color .18s ease;
   }
 
-  .campo textarea { resize: vertical; min-height: 68px; }
+  .campo textarea { resize: vertical; min-height: 72px; }
 
   .campo input:hover,
-  .campo select:hover,
+  .campo-select select:hover,
   .campo textarea:hover { border-bottom-color: var(--acero); }
 
   .campo input:focus,
-  .campo select:focus,
+  .campo-select select:focus,
   .campo textarea:focus {
     outline: none;
     border-bottom-color: var(--oxido);
     border-bottom-width: 2px;
-    padding-bottom: 7px;
+    padding-bottom: 9px;
   }
 
-  .campo select { appearance: none; cursor: pointer; }
+  .campo-select select { appearance: none; cursor: pointer; }
 
-  .campo-select { position: relative; display: flex; flex-direction: column; gap: 7px; }
+  .campo-select { position: relative; }
   .campo-select::after {
     content: "";
     position: absolute;
     right: 4px;
-    bottom: 17px;
+    bottom: 19px;
     width: 7px;
     height: 7px;
     border-right: 1px solid var(--acero);
@@ -649,21 +744,27 @@
   .equipo-op input { position: absolute; opacity: 0; pointer-events: none; }
 
   .equipo-op span {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-family: var(--dato);
     font-size: 11px;
     letter-spacing: .08em;
     text-transform: uppercase;
-    padding: 8px 13px;
+    padding: 9px 13px;
+    min-height: 40px;
     border: 1px solid var(--linea);
     cursor: pointer;
     user-select: none;
     transition: border-color .16s ease, background-color .16s ease, color .16s ease;
   }
 
+  .equipo-op span svg { width: 26px; height: 16px; flex: none; }
+
   .equipo-op span:hover { border-color: var(--acero); }
 
   .equipo-op input:checked + span {
+    --hueco: var(--oxido);
     border-color: var(--oxido);
     background: var(--oxido);
     color: #FBF7F3;
@@ -674,16 +775,25 @@
   .ficha-pie {
     display: grid;
     gap: 16px;
-    margin-top: 28px;
-    padding-top: 24px;
+    margin-top: 26px;
+    padding-top: 22px;
     border-top: 1px dotted var(--linea);
   }
 
   .aviso { font-size: 12px; color: var(--acero); margin: 0; }
+  .aviso:empty { display: none; }
+
+  .aviso-enlace {
+    font-family: var(--dato);
+    color: var(--oxido);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    overflow-wrap: anywhere;
+  }
 
   /* Confirmación */
 
-  .confirmacion { display: none; padding: 44px 26px 48px; text-align: left; }
+  .confirmacion { display: none; padding: 40px var(--margen) 46px; }
   .confirmacion[data-visible="true"] { display: block; }
 
   .confirmacion .sello {
@@ -696,18 +806,18 @@
     border: 2px solid var(--oxido);
     padding: 8px 14px;
     transform: rotate(-2.5deg);
-    margin-bottom: 24px;
+    margin-bottom: 22px;
   }
 
   .confirmacion h3 {
     font-family: var(--display);
     text-transform: uppercase;
-    font-size: clamp(28px, 4vw, 40px);
+    font-size: clamp(26px, 6vw, 40px);
     margin: 0 0 14px;
     line-height: 1;
   }
 
-  .confirmacion p { color: var(--acero); max-width: 44ch; margin: 0 0 24px; }
+  .confirmacion p { color: var(--acero); max-width: 44ch; margin: 0 0 22px; }
 
   .folio {
     font-family: var(--dato);
@@ -724,7 +834,7 @@
 
   /* ─── Pie ─────────────────────────────────────────────────── */
 
-  .pie { border-top: 1px solid var(--linea); padding-block: 44px 52px; }
+  .pie { border-top: 1px solid var(--linea); padding-block: 40px 48px; }
 
   .pie-rejilla {
     display: flex;
@@ -734,11 +844,24 @@
     align-items: flex-start;
   }
 
+  .pie-enlaces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  .pie-enlaces a { text-decoration: none; color: var(--acero); }
+  .pie-enlaces a:hover { color: var(--oxido); }
+
   .pie-contacto { display: grid; gap: 6px; font-family: var(--dato); font-size: 13px; }
   .pie-contacto a { text-decoration: none; }
   .pie-contacto a:hover { color: var(--oxido); }
 
-  .pie-legal { font-size: 12px; color: var(--acero); margin: 32px 0 0; }
+  .pie-legal { font-size: 12px; color: var(--acero); margin: 30px 0 0; }
 
   /* ─── Movimiento ──────────────────────────────────────────── */
 
@@ -752,30 +875,188 @@
 
   @media (prefers-reduced-motion: reduce) {
     .revelar { opacity: 1; transform: none; transition: none; }
-    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+    }
   }
 
   /* ─── Adaptable ───────────────────────────────────────────── */
 
+  @media (max-width: 1000px) {
+    .nav { gap: 18px; }
+  }
+
   @media (max-width: 900px) {
     .heroe-rejilla,
     .registro-rejilla { grid-template-columns: 1fr; }
-    .cifras { grid-template-columns: 1fr 1fr; }
-    .cifra { border-left: 1px solid var(--linea-suave); padding-inline: 18px; }
-    .cifra:first-child, .cifra:nth-child(3) { border-left: 0; padding-left: 0; }
-    .cifra:nth-child(3), .cifra:nth-child(4) { border-top: 1px solid var(--linea-suave); }
     .pasos { grid-template-columns: 1fr; }
     .condiciones { grid-template-columns: 1fr 1fr; }
     .nav { display: none; }
+    .placa { max-width: 460px; }
+  }
+
+  /* La tabla se convierte en tarjetas: nada de scroll horizontal en móvil */
+  @media (max-width: 760px) {
+    table.flota thead { display: none; }
+    table.flota, table.flota tbody, table.flota tr, table.flota td { display: block; width: 100%; }
+
+    table.flota tr {
+      --hueco: var(--panel);
+      border: 1px solid var(--linea);
+      padding: 18px 16px 14px;
+      margin-bottom: 14px;
+      background: var(--panel);
+    }
+
+    table.flota td {
+      padding: 0;
+      border-bottom: 0;
+    }
+
+    table.flota td + td {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      padding-block: 9px;
+      border-top: 1px dotted var(--linea);
+    }
+
+    table.flota td + td::before {
+      content: attr(data-titulo);
+      font-family: var(--dato);
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--acero);
+    }
+
+    table.flota td:first-child { padding-bottom: 12px; }
+    .maq-icono { width: 54px; height: 32px; }
   }
 
   @media (max-width: 620px) {
     .campos { grid-template-columns: 1fr; }
     .condiciones { grid-template-columns: 1fr; }
     .marca-sufijo { display: none; }
-    .ficha-cuerpo { padding-inline: 20px; }
+    .cifras { grid-template-columns: 1fr 1fr; }
+    .cifra { padding: 20px 16px; }
+    .cifra:first-child, .cifra:nth-child(3) { border-left: 0; padding-left: 0; }
+    .cifra:nth-child(3), .cifra:nth-child(4) { border-top: 1px solid var(--linea-suave); }
+    .seccion-cabeza { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .seccion-cabeza .num { padding-top: 0; }
+    .heroe-acciones .boton { flex: 1 1 100%; }
+    .placa-dibujo { padding: 20px 20px 4px; }
+    .placa-cabeza, .placa-filas { padding-inline: 18px; }
+    .placa-pie { padding-inline: 18px; }
+  }
+
+  @media (max-width: 380px) {
+    .marca-nombre { font-size: 19px; }
+    .boton { font-size: 11px; letter-spacing: .1em; }
   }
 </style>
+</head>
+<body>
+
+<!-- ─── Pictogramas de maquinaria ───────────────────────────── -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <g id="g-excavadora">
+      <rect x="6" y="31" width="36" height="10" rx="5" fill="currentColor"/>
+      <circle cx="13" cy="36" r="2.2" fill="var(--hueco)"/>
+      <circle cx="24" cy="36" r="2.2" fill="var(--hueco)"/>
+      <circle cx="35" cy="36" r="2.2" fill="var(--hueco)"/>
+      <rect x="10" y="19" width="27" height="11" rx="1.5" fill="currentColor"/>
+      <rect x="13" y="10" width="12" height="9" rx="1.5" fill="currentColor"/>
+      <path d="M34 22 L53 11" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" fill="none"/>
+      <path d="M53 11 L59 25" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+      <path d="M59 25 L69 25 L67 33 L58 31 Z" fill="currentColor"/>
+    </g>
+
+    <g id="g-volquete">
+      <path d="M30 31 L36 9 L70 13 L67 31 Z" fill="currentColor"/>
+      <rect x="8" y="17" width="18" height="15" rx="2" fill="currentColor"/>
+      <rect x="6" y="30" width="66" height="5" rx="1.5" fill="currentColor"/>
+      <circle cx="17" cy="38" r="6" fill="currentColor"/>
+      <circle cx="48" cy="38" r="6" fill="currentColor"/>
+      <circle cx="62" cy="38" r="6" fill="currentColor"/>
+      <circle cx="17" cy="38" r="2.2" fill="var(--hueco)"/>
+      <circle cx="48" cy="38" r="2.2" fill="var(--hueco)"/>
+      <circle cx="62" cy="38" r="2.2" fill="var(--hueco)"/>
+    </g>
+
+    <g id="g-cargador">
+      <rect x="30" y="18" width="30" height="14" rx="2" fill="currentColor"/>
+      <rect x="37" y="9" width="14" height="10" rx="1.5" fill="currentColor"/>
+      <path d="M32 23 L14 29" stroke="currentColor" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <path d="M15 25 L15 37 L5 37 L5 33 Z" fill="currentColor"/>
+      <circle cx="38" cy="36" r="7.5" fill="currentColor"/>
+      <circle cx="59" cy="36" r="7.5" fill="currentColor"/>
+      <circle cx="38" cy="36" r="2.6" fill="var(--hueco)"/>
+      <circle cx="59" cy="36" r="2.6" fill="var(--hueco)"/>
+    </g>
+
+    <g id="g-tractor">
+      <rect x="16" y="30" width="38" height="11" rx="5.5" fill="currentColor"/>
+      <circle cx="24" cy="35.5" r="2.4" fill="var(--hueco)"/>
+      <circle cx="35" cy="35.5" r="2.4" fill="var(--hueco)"/>
+      <circle cx="46" cy="35.5" r="2.4" fill="var(--hueco)"/>
+      <rect x="22" y="18" width="28" height="12" rx="1.5" fill="currentColor"/>
+      <rect x="32" y="9" width="14" height="9" rx="1.5" fill="currentColor"/>
+      <path d="M18 24 L10 27" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+      <path d="M5 19 L11 19 L11 41 L5 41 Z" fill="currentColor"/>
+    </g>
+
+    <g id="g-motoniveladora">
+      <rect x="46" y="12" width="20" height="15" rx="2" fill="currentColor"/>
+      <path d="M12 32 L20 24 L48 22" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M27 30 L44 34" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" fill="none"/>
+      <circle cx="11" cy="36" r="6" fill="currentColor"/>
+      <circle cx="54" cy="35" r="7" fill="currentColor"/>
+      <circle cx="68" cy="35" r="7" fill="currentColor"/>
+      <circle cx="11" cy="36" r="2.2" fill="var(--hueco)"/>
+      <circle cx="54" cy="35" r="2.4" fill="var(--hueco)"/>
+      <circle cx="68" cy="35" r="2.4" fill="var(--hueco)"/>
+    </g>
+
+    <g id="g-perforadora">
+      <rect x="8" y="31" width="34" height="10" rx="5" fill="currentColor"/>
+      <circle cx="15" cy="36" r="2.2" fill="var(--hueco)"/>
+      <circle cx="25" cy="36" r="2.2" fill="var(--hueco)"/>
+      <circle cx="35" cy="36" r="2.2" fill="var(--hueco)"/>
+      <rect x="12" y="19" width="26" height="12" rx="1.5" fill="currentColor"/>
+      <rect x="48" y="4" width="7" height="34" rx="1" fill="currentColor"/>
+      <path d="M38 12 L48 12 M38 20 L48 20 M38 28 L48 28" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M51.5 38 L51.5 43" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <g id="g-rodillo">
+      <rect x="32" y="17" width="28" height="14" rx="2" fill="currentColor"/>
+      <rect x="38" y="7" width="15" height="10" rx="1.5" fill="currentColor"/>
+      <circle cx="20" cy="30" r="12" fill="currentColor"/>
+      <circle cx="20" cy="30" r="4.5" fill="var(--hueco)"/>
+      <circle cx="58" cy="34" r="8" fill="currentColor"/>
+      <circle cx="58" cy="34" r="2.8" fill="var(--hueco)"/>
+      <path d="M28 24 L34 24" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+    </g>
+
+    <g id="g-grua">
+      <rect x="6" y="26" width="64" height="10" rx="2" fill="currentColor"/>
+      <rect x="9" y="16" width="12" height="10" rx="1.5" fill="currentColor"/>
+      <path d="M26 26 L72 6" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+      <path d="M70 7 L70 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M65 17 L75 17 L73 23 L67 23 Z" fill="currentColor"/>
+      <circle cx="16" cy="39" r="5" fill="currentColor"/>
+      <circle cx="31" cy="39" r="5" fill="currentColor"/>
+      <circle cx="47" cy="39" r="5" fill="currentColor"/>
+      <circle cx="62" cy="39" r="5" fill="currentColor"/>
+    </g>
+  </defs>
+
+</svg>
 
 <div class="franja" aria-hidden="true"></div>
 
@@ -790,7 +1071,7 @@
       <a href="#proceso">Proceso</a>
       <a href="#condiciones">Condiciones</a>
     </nav>
-    <a class="boton" href="#registro">Registrarse</a>
+    <a class="boton boton--compacto" href="#registro">Registrarse</a>
   </div>
 </header>
 
@@ -815,7 +1096,10 @@
         </div>
       </div>
 
-      <aside class="placa" aria-label="Ficha de flota">
+      <aside class="placa" aria-label="Ficha técnica de flota">
+        <svg class="placa-dibujo" viewBox="0 0 80 48" role="img" aria-label="Excavadora de orugas">
+          <use href="#g-excavadora"/>
+        </svg>
         <div class="placa-cabeza">
           <p class="etiqueta">Placa de identificación</p>
           <strong>Flota 2026</strong>
@@ -825,7 +1109,6 @@
           <div class="placa-fila"><dt>Peso operativo máx.</dt><dd>96 t</dd></div>
           <div class="placa-fila"><dt>Cucharón máx.</dt><dd>6.5 m³</dd></div>
           <div class="placa-fila"><dt>Altitud de trabajo</dt><dd>hasta 4 800 msnm</dd></div>
-          <div class="placa-fila"><dt>Horómetro promedio</dt><dd>3 240 h</dd></div>
           <div class="placa-fila"><dt>Despacho a obra</dt><dd>24 – 72 h</dd></div>
         </dl>
         <div class="placa-pie">
@@ -835,6 +1118,28 @@
       </aside>
     </div>
   </section>
+
+  <!-- FRISO DE FLOTA -->
+  <div class="friso" aria-hidden="true">
+    <div class="friso-pista">
+      <svg viewBox="0 0 80 48"><use href="#g-excavadora"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-volquete"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-cargador"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-tractor"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-motoniveladora"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-perforadora"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-rodillo"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-grua"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-excavadora"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-volquete"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-cargador"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-tractor"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-motoniveladora"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-perforadora"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-rodillo"/></svg>
+      <svg viewBox="0 0 80 48"><use href="#g-grua"/></svg>
+    </div>
+  </div>
 
   <!-- CIFRAS -->
   <section>
@@ -868,101 +1173,139 @@
         <h2 class="display">Qué hay disponible</h2>
       </div>
 
-      <div class="tabla-caja">
-        <table class="flota">
-          <thead>
-            <tr>
-              <th scope="col">Equipo</th>
-              <th scope="col">Capacidad</th>
-              <th scope="col">Potencia</th>
-              <th scope="col">Peso op.</th>
-              <th scope="col">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Excavadora de orugas</span>
-                <span class="maq-modelo">MB-EX 360 · clase 36 t</span>
-              </td>
-              <td class="celda-dato">1.9 m³</td>
-              <td class="celda-dato">268 hp</td>
-              <td class="celda-dato">36.2 t</td>
-              <td><span class="chip chip--libre">Disponible</span></td>
-            </tr>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Volquete 15 m³</span>
-                <span class="maq-modelo">MB-VQ 8×4 · roquero</span>
-              </td>
-              <td class="celda-dato">15 m³ / 25 t</td>
-              <td class="celda-dato">420 hp</td>
-              <td class="celda-dato">17.5 t</td>
-              <td><span class="chip chip--libre">Disponible</span></td>
-            </tr>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Cargador frontal</span>
-                <span class="maq-modelo">MB-CF 950 · articulado</span>
-              </td>
-              <td class="celda-dato">3.4 m³</td>
-              <td class="celda-dato">300 hp</td>
-              <td class="celda-dato">22.8 t</td>
-              <td><span class="chip chip--pocas">Últimas 3</span></td>
-            </tr>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Tractor de orugas</span>
-                <span class="maq-modelo">MB-TO D8 · hoja SU</span>
-              </td>
-              <td class="celda-dato">8.7 m³ hoja</td>
-              <td class="celda-dato">354 hp</td>
-              <td class="celda-dato">39.1 t</td>
-              <td><span class="chip chip--libre">Disponible</span></td>
-            </tr>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Motoniveladora</span>
-                <span class="maq-modelo">MB-MN 140 · 12 pies</span>
-              </td>
-              <td class="celda-dato">3.7 m hoja</td>
-              <td class="celda-dato">193 hp</td>
-              <td class="celda-dato">18.6 t</td>
-              <td><span class="chip chip--pocas">Últimas 2</span></td>
-            </tr>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Perforadora hidráulica</span>
-                <span class="maq-modelo">MB-PH 5 · banco 102 mm</span>
-              </td>
-              <td class="celda-dato">Ø 89 – 127 mm</td>
-              <td class="celda-dato">243 hp</td>
-              <td class="celda-dato">24.0 t</td>
-              <td><span class="chip chip--pedido">Bajo pedido</span></td>
-            </tr>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Rodillo compactador</span>
-                <span class="maq-modelo">MB-RC 11 · liso vibratorio</span>
-              </td>
-              <td class="celda-dato">2.13 m ancho</td>
-              <td class="celda-dato">130 hp</td>
-              <td class="celda-dato">11.4 t</td>
-              <td><span class="chip chip--libre">Disponible</span></td>
-            </tr>
-            <tr class="revelar">
-              <td>
-                <span class="maq-nombre">Grúa telescópica</span>
-                <span class="maq-modelo">MB-GT 60 · todo terreno</span>
-              </td>
-              <td class="celda-dato">60 t · 48 m</td>
-              <td class="celda-dato">367 hp</td>
-              <td class="celda-dato">48.0 t</td>
-              <td><span class="chip chip--pedido">Bajo pedido</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <table class="flota">
+        <thead>
+          <tr>
+            <th scope="col">Equipo</th>
+            <th scope="col">Capacidad</th>
+            <th scope="col">Potencia</th>
+            <th scope="col">Peso op.</th>
+            <th scope="col">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-excavadora"/></svg>
+                <div>
+                  <span class="maq-nombre">Excavadora de orugas</span>
+                  <span class="maq-modelo">MB-EX 360 · clase 36 t</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">1.9 m³</td>
+            <td class="celda-dato" data-titulo="Potencia">268 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">36.2 t</td>
+            <td data-titulo="Estado"><span class="chip chip--libre">Disponible</span></td>
+          </tr>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-volquete"/></svg>
+                <div>
+                  <span class="maq-nombre">Volquete 15 m³</span>
+                  <span class="maq-modelo">MB-VQ 8×4 · roquero</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">15 m³ / 25 t</td>
+            <td class="celda-dato" data-titulo="Potencia">420 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">17.5 t</td>
+            <td data-titulo="Estado"><span class="chip chip--libre">Disponible</span></td>
+          </tr>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-cargador"/></svg>
+                <div>
+                  <span class="maq-nombre">Cargador frontal</span>
+                  <span class="maq-modelo">MB-CF 950 · articulado</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">3.4 m³</td>
+            <td class="celda-dato" data-titulo="Potencia">300 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">22.8 t</td>
+            <td data-titulo="Estado"><span class="chip chip--pocas">Últimas 3</span></td>
+          </tr>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-tractor"/></svg>
+                <div>
+                  <span class="maq-nombre">Tractor de orugas</span>
+                  <span class="maq-modelo">MB-TO D8 · hoja SU</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">8.7 m³ hoja</td>
+            <td class="celda-dato" data-titulo="Potencia">354 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">39.1 t</td>
+            <td data-titulo="Estado"><span class="chip chip--libre">Disponible</span></td>
+          </tr>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-motoniveladora"/></svg>
+                <div>
+                  <span class="maq-nombre">Motoniveladora</span>
+                  <span class="maq-modelo">MB-MN 140 · 12 pies</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">3.7 m hoja</td>
+            <td class="celda-dato" data-titulo="Potencia">193 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">18.6 t</td>
+            <td data-titulo="Estado"><span class="chip chip--pocas">Últimas 2</span></td>
+          </tr>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-perforadora"/></svg>
+                <div>
+                  <span class="maq-nombre">Perforadora hidráulica</span>
+                  <span class="maq-modelo">MB-PH 5 · banco 102 mm</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">Ø 89 – 127 mm</td>
+            <td class="celda-dato" data-titulo="Potencia">243 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">24.0 t</td>
+            <td data-titulo="Estado"><span class="chip chip--pedido">Bajo pedido</span></td>
+          </tr>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-rodillo"/></svg>
+                <div>
+                  <span class="maq-nombre">Rodillo compactador</span>
+                  <span class="maq-modelo">MB-RC 11 · liso vibratorio</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">2.13 m ancho</td>
+            <td class="celda-dato" data-titulo="Potencia">130 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">11.4 t</td>
+            <td data-titulo="Estado"><span class="chip chip--libre">Disponible</span></td>
+          </tr>
+          <tr class="revelar">
+            <td>
+              <div class="maq">
+                <svg class="maq-icono" viewBox="0 0 80 48" aria-hidden="true"><use href="#g-grua"/></svg>
+                <div>
+                  <span class="maq-nombre">Grúa telescópica</span>
+                  <span class="maq-modelo">MB-GT 60 · todo terreno</span>
+                </div>
+              </div>
+            </td>
+            <td class="celda-dato" data-titulo="Capacidad">60 t · 48 m</td>
+            <td class="celda-dato" data-titulo="Potencia">367 hp</td>
+            <td class="celda-dato" data-titulo="Peso op.">48.0 t</td>
+            <td data-titulo="Estado"><span class="chip chip--pedido">Bajo pedido</span></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -1072,12 +1415,12 @@
 
             <div class="campo">
               <label for="email">Correo corporativo <span>*</span></label>
-              <input type="email" id="email" name="email" autocomplete="email" required>
+              <input type="email" id="email" name="email" autocomplete="email" inputmode="email" required>
             </div>
 
             <div class="campo">
               <label for="telefono">Teléfono <span>*</span></label>
-              <input type="tel" id="telefono" name="telefono" autocomplete="tel" required>
+              <input type="tel" id="telefono" name="telefono" autocomplete="tel" inputmode="tel" required>
             </div>
 
             <div class="campo-select">
@@ -1103,19 +1446,19 @@
               </select>
             </div>
 
-            <div class="campo campo--ancho">
-              <label>Equipo que te interesa</label>
-            </div>
+            <fieldset class="campo campo--ancho" style="border:0;padding:0;margin:0">
+              <legend class="etiqueta" style="padding:0;font-size:10px;letter-spacing:.15em">Equipo que te interesa</legend>
+            </fieldset>
 
             <div class="equipos">
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Excavadora"><span>Excavadora</span></label>
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Volquete"><span>Volquete</span></label>
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Cargador"><span>Cargador</span></label>
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Tractor"><span>Tractor</span></label>
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Motoniveladora"><span>Motoniveladora</span></label>
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Perforadora"><span>Perforadora</span></label>
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Rodillo"><span>Rodillo</span></label>
-              <label class="equipo-op"><input type="checkbox" name="equipo" value="Grua"><span>Grúa</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Excavadora"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-excavadora"/></svg>Excavadora</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Volquete"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-volquete"/></svg>Volquete</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Cargador"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-cargador"/></svg>Cargador</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Tractor"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-tractor"/></svg>Tractor</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Motoniveladora"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-motoniveladora"/></svg>Motoniveladora</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Perforadora"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-perforadora"/></svg>Perforadora</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Rodillo"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-rodillo"/></svg>Rodillo</span></label>
+              <label class="equipo-op"><input type="checkbox" name="equipo" value="Grua"><span><svg viewBox="0 0 80 48" aria-hidden="true"><use href="#g-grua"/></svg>Grúa</span></label>
             </div>
 
             <div class="campo campo--ancho">
@@ -1132,6 +1475,10 @@
               Sin costo y sin compromiso. Usamos tus datos solo para contactarte
               sobre el alquiler.
             </p>
+            <p class="aviso">
+              ¿Prefieres escribirnos directamente?
+              <a class="aviso-enlace" href="mailto:gerencia@mining-big.com">gerencia@mining-big.com</a>
+            </p>
           </div>
         </form>
 
@@ -1146,6 +1493,13 @@
             <span>Folio <b id="conf-folio">MB-000000</b></span>
             <span id="conf-fecha">—</span>
           </div>
+          <p style="margin: 26px 0 14px">
+            Adelanta tu cotización: respóndenos seis preguntas rápidas por WhatsApp
+            y tu asesor llega con la tarifa ya calculada.
+          </p>
+          <a class="boton" id="conf-whatsapp" href="#" target="_blank" rel="noopener">
+            Continuar por WhatsApp
+          </a>
         </div>
       </div>
 
@@ -1160,9 +1514,15 @@
       <div>
         <span class="marca-nombre">Mining <em>Big</em></span>
         <p class="etiqueta" style="margin-top:8px">Alquiler de maquinaria pesada para minería y obra civil</p>
+        <nav class="pie-enlaces" style="margin-top:18px">
+          <a href="#flota">Flota</a>
+          <a href="#proceso">Proceso</a>
+          <a href="#condiciones">Condiciones</a>
+          <a href="#registro">Registrarse</a>
+        </nav>
       </div>
       <div class="pie-contacto">
-        <a href="mailto:registro@miningbig.com">registro@miningbig.com</a>
+        <a href="mailto:gerencia@mining-big.com">gerencia@mining-big.com</a>
         <a href="tel:+000000000">+00 000 000 000</a>
         <span style="color:var(--acero)">Lun a sáb · 07:00 – 19:00</span>
       </div>
@@ -1175,8 +1535,17 @@
 
 <script>
   (function () {
-    // Revelado al hacer scroll
+    // Webhook de n8n que recibe los registros y devuelve el folio.
+    var ENDPOINT_REGISTRO = "https://m4xx.app.n8n.cloud/webhook/registro-mining-big";
+
+    // Número de WhatsApp del negocio, formato internacional sin + ni espacios.
+    // Hoy es el número de PRUEBA de Meta: solo responde a los 5 destinatarios
+    // autorizados en la consola. Cambiar al número real en producción.
+    var WHATSAPP_NEGOCIO = "15556371888";
+
     var reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Revelado al hacer scroll
     var objetivos = document.querySelectorAll(".revelar");
 
     if (reducido || !("IntersectionObserver" in window)) {
@@ -1189,7 +1558,7 @@
           setTimeout(function () { el.setAttribute("data-visto", "true"); }, i * 60);
           observador.unobserve(el);
         });
-      }, { threshold: 0.15, rootMargin: "0px 0px -40px 0px" });
+      }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
 
       objetivos.forEach(function (el) { observador.observe(el); });
     }
@@ -1229,20 +1598,67 @@
 
       error.textContent = "";
 
-      var nombre = document.getElementById("nombre").value.trim().split(/\s+/)[0];
-      var folio = "MB-" + String(Math.floor(100000 + Math.random() * 899999));
-      var hoy = new Date();
-      var fecha = String(hoy.getDate()).padStart(2, "0") + "/" +
-                  String(hoy.getMonth() + 1).padStart(2, "0") + "/" +
-                  hoy.getFullYear();
+      var boton = form.querySelector("button[type=submit]");
+      var textoBoton = boton.textContent;
+      boton.disabled = true;
+      boton.textContent = "Enviando...";
 
-      document.getElementById("conf-nombre").textContent = nombre;
-      document.getElementById("conf-folio").textContent = folio;
-      document.getElementById("conf-fecha").textContent = fecha;
+      var equipos = [];
+      var casillas = form.querySelectorAll("input[name=equipo]:checked");
+      for (var k = 0; k < casillas.length; k++) { equipos.push(casillas[k].value); }
 
-      form.style.display = "none";
-      confirmacion.setAttribute("data-visible", "true");
-      confirmacion.scrollIntoView({ behavior: reducido ? "auto" : "smooth", block: "center" });
+      var datos = {
+        nombre: document.getElementById("nombre").value,
+        empresa: document.getElementById("empresa").value,
+        email: document.getElementById("email").value,
+        telefono: document.getElementById("telefono").value,
+        zona: document.getElementById("zona").value,
+        plazo: document.getElementById("plazo").value,
+        equipo: equipos,
+        detalle: document.getElementById("detalle").value
+      };
+
+      fetch(ENDPOINT_REGISTRO, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(datos)
+      })
+        .then(function (r) {
+          if (!r.ok) { throw new Error("HTTP " + r.status); }
+          return r.json();
+        })
+        .then(function (respuesta) {
+          if (!respuesta || !respuesta.folio) { throw new Error("respuesta sin folio"); }
+
+          var nombre = datos.nombre.trim().split(/\s+/)[0];
+          var hoy = new Date();
+          var fecha = String(hoy.getDate()).padStart(2, "0") + "/" +
+                      String(hoy.getMonth() + 1).padStart(2, "0") + "/" +
+                      hoy.getFullYear();
+
+          document.getElementById("conf-nombre").textContent = nombre;
+          document.getElementById("conf-folio").textContent = respuesta.folio;
+          document.getElementById("conf-fecha").textContent = fecha;
+
+          // El folio viaja en el texto: es lo que le permite al bot enlazar
+          // esta conversación de WhatsApp con el registro recién guardado.
+          var saludo = "Hola, acabo de registrarme. Folio " + respuesta.folio;
+          document.getElementById("conf-whatsapp").href =
+            "https://wa.me/" + WHATSAPP_NEGOCIO + "?text=" + encodeURIComponent(saludo);
+
+          form.style.display = "none";
+          confirmacion.setAttribute("data-visible", "true");
+          confirmacion.scrollIntoView({ behavior: reducido ? "auto" : "smooth", block: "center" });
+        })
+        .catch(function () {
+          // El registro no se guardó: no mostramos folio, porque sería mentirle al cliente.
+          error.textContent = "No pudimos registrar tus datos. Reintenta en un momento o escríbenos por WhatsApp.";
+          error.style.color = "var(--oxido)";
+          boton.disabled = false;
+          boton.textContent = textoBoton;
+        });
     });
   })();
 </script>
+</body>
+</html>
