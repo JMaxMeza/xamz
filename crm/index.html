@@ -271,7 +271,7 @@
   'use strict';
 
   var API = 'https://m4xx.app.n8n.cloud/webhook/crm-mining-big-k4x7';
-  var CADA_MS = 15000;
+  var CADA_MS = 45000;
 
   var clave = localStorage.getItem('mb_crm_clave') || '';
   var datos = { registros: [], conversaciones: [], mensajes: [], alertas: [] };
@@ -628,10 +628,29 @@
     });
   }
 
+  // El sondeo consume una ejecucion de n8n cada vez. Con la pestana en
+  // segundo plano no sirve de nada, asi que se detiene y se retoma al volver.
+  function pararSondeo() {
+    if (temporizador) { clearInterval(temporizador); temporizador = null; }
+  }
+
+  function arrancarSondeo() {
+    pararSondeo();
+    if (document.hidden) return;
+    temporizador = setInterval(cargar, CADA_MS);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!clave) return;
+    if (document.hidden) { pararSondeo(); return; }
+    cargar();
+    arrancarSondeo();
+  });
+
   function salir() {
     localStorage.removeItem('mb_crm_clave');
     clave = '';
-    if (temporizador) clearInterval(temporizador);
+    pararSondeo();
     $('app').classList.add('oculto');
     $('pantalla-acceso').classList.remove('oculto');
   }
@@ -644,8 +663,7 @@
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-    if (temporizador) clearInterval(temporizador);
-    temporizador = setInterval(cargar, CADA_MS);
+    arrancarSondeo();
   }
 
   // ── Eventos ──
