@@ -1535,8 +1535,11 @@
 
 <script>
   (function () {
-    // Webhook de n8n que recibe los registros y devuelve el folio.
-    var ENDPOINT_REGISTRO = "https://m4xx.app.n8n.cloud/webhook/registro-mining-big";
+    // Funcion serverless propia (api/registro.js) que guarda el registro y
+    // devuelve el folio. Antes esto apuntaba a un webhook de n8n; se movio
+    // aca el 2026-08-19 cuando vencio la prueba gratuita y dejo de responder.
+    // Ruta relativa: mismo dominio que la landing, asi que no hay CORS.
+    var ENDPOINT_REGISTRO = "/api/registro";
 
     // Número de WhatsApp del negocio, formato internacional sin + ni espacios.
     // Hoy es el número de PRUEBA de Meta: solo responde a los 5 destinatarios

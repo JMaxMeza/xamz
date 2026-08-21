@@ -2,6 +2,11 @@
 Thumbs.db
 desktop.ini
 *.tmp
+
+# Credenciales del proyecto de Vercel.
 .vercel/
 
-.vercel
+# Todavia no existe (el proyecto se despliega sin instalar nada en local),
+# pero el dia que alguien corra `npm install` y despues `git add -A`, entran
+# miles de archivos al repo si esto no esta.
+node_modules/

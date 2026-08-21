@@ -1,0 +1,9 @@
+{
+  "name": "landing-mining-big",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landing y CRM de Mining Big, con la captura de registros como funcion serverless.",
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

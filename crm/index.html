@@ -205,23 +205,43 @@
   .alerta.vista { border-left-color: var(--linea); opacity: .6; }
   .alerta .motivo { font-weight: 700; }
   .alerta .cuando { font-family: var(--dato); font-size: 11px; color: var(--acero); margin-left: auto; }
+
+  /* ── Avisos ── */
+  /* Una accion que falla tiene que decirlo en algun lado: antes se perdia en
+     silencio y la pantalla se revertia sola al sondeo siguiente. */
+  .aviso-global {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    max-width: min(560px, calc(100vw - 28px)); z-index: 40;
+    background: var(--panel); color: var(--tinta);
+    border: 1px solid var(--linea); border-left: 4px solid var(--acero);
+    border-radius: 6px; padding: 10px 14px; font-size: 13px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); cursor: pointer;
+  }
+  .aviso-global.err { border-left-color: var(--oxido); color: var(--oxido); }
+  .aviso-recorte {
+    background: var(--oxido-sup); border: 1px solid var(--oxido);
+    border-radius: 6px; padding: 8px 12px; margin-bottom: 12px;
+    font-size: 13px; color: var(--oxido);
+  }
 </style>
 </head>
 <body>
 
 <div id="pantalla-acceso" class="acceso">
   <h1>Mining <b style="color:var(--oxido)">Big</b> · CRM</h1>
-  <p>Panel interno. Ingresá la clave de acceso.</p>
-  <input id="campo-clave" type="password" placeholder="Clave" autocomplete="current-password">
+  <p id="ayuda-clave">Panel interno. Ingresá la clave de acceso.</p>
+  <input id="campo-clave" type="password" placeholder="Clave" autocomplete="current-password"
+         aria-label="Clave de acceso" aria-describedby="ayuda-clave">
   <button id="boton-entrar">Entrar</button>
-  <div class="error" id="error-acceso">Clave incorrecta.</div>
+  <div class="error" id="error-acceso" role="alert">Clave incorrecta.</div>
 </div>
 
 <div id="app" class="oculto">
   <header>
     <span class="marca">MINING <b>BIG</b></span>
     <span class="tag">CRM</span>
-    <span class="estado-red" id="estado-red">—</span>
+    <span class="estado-red" id="estado-red" role="status" aria-live="polite">—</span>
+    <button class="btn-sec" id="boton-salir" style="margin-left:12px">Salir</button>
   </header>
   <nav>
     <button data-tab="solicitudes" class="activa">Solicitudes <span class="badge" id="badge-solicitudes"></span></button>
@@ -238,6 +258,13 @@
     </section>
 
     <section id="tab-chats" class="oculto">
+      <!-- La API topa el historial en 4.000 mensajes por sondeo. Cuando ese
+           tope se toca, el panel deja de ver los mensajes mas viejos: hay que
+           enterarse aca y no leyendo el JSON a mano. -->
+      <div class="aviso-recorte oculto" id="aviso-recorte" role="status">
+        El historial llegó al tope de 4.000 mensajes por consulta: los chats más
+        antiguos ya no se están descargando. Hay que paginar por conversación.
+      </div>
       <div class="chats" id="zona-chats">
         <div class="lista-chats" id="lista-chats"></div>
         <div class="panel-chat">
@@ -245,15 +272,17 @@
             <button class="btn-sec volver" id="boton-volver">←</button>
             <span class="tel" id="chat-telefono">Elegí un chat</span>
             <span id="chat-etiquetas"></span>
-            <label class="interruptor" id="zona-interruptor" style="display:none">
+            <span class="interruptor" id="zona-interruptor" style="display:none">
               <span id="texto-bot">Bot activo</span>
-              <span class="palanca si" id="palanca-bot" role="switch" tabindex="0"></span>
-            </label>
+              <span class="palanca si" id="palanca-bot" role="switch" tabindex="0"
+                    aria-checked="true" aria-label="Bot automático de esta conversación"></span>
+            </span>
           </div>
           <div class="mensajes" id="zona-mensajes"><div class="vacio">Seleccioná una conversación de la lista.</div></div>
           <div class="aviso-envio" id="aviso-envio"></div>
           <div class="redactar" id="zona-redactar" style="display:none">
-            <textarea id="campo-mensaje" placeholder="Escribir como asesor…"></textarea>
+            <textarea id="campo-mensaje" placeholder="Escribir como asesor…"
+                      aria-label="Mensaje para el cliente"></textarea>
             <button id="boton-enviar">Enviar</button>
           </div>
         </div>
@@ -264,21 +293,41 @@
       <div id="lista-alertas"></div>
     </section>
   </main>
+  <div class="aviso-global oculto" id="aviso-global" role="status" aria-live="polite" title="Clic para cerrar"></div>
 </div>
 
 <script>
 (function () {
   'use strict';
 
-  var API = 'https://m4xx.app.n8n.cloud/webhook/crm-mining-big-k4x7';
+  // Ruta relativa, mismo dominio que el panel: no hay CORS de por medio.
+  // Antes esto era el webhook de n8n (crm-mining-big-k4x7), que dejó de
+  // responder cuando venció la prueba gratuita.
+  var API = '/api/crm';
   var CADA_MS = 45000;
+  // En segundo plano se baja el ritmo, no se corta: el pitido y la
+  // notificacion del navegador existen justo para avisar cuando el asesor NO
+  // esta mirando la pestana, y parando el sondeo no se enteraban de nada
+  // hasta que alguien volvia a la pestana (horas, en la practica).
+  var CADA_MS_OCULTO = 300000;
 
   var clave = localStorage.getItem('mb_crm_clave') || '';
-  var datos = { registros: [], conversaciones: [], mensajes: [], alertas: [] };
+  var datos = { registros: [], conversaciones: [], mensajes: [], alertas: [], mensajes_recortados: false };
   var chatAbierto = null;
   var filtroSolicitudes = 'pendientes';
-  var ultimaAlertaNotificada = parseInt(localStorage.getItem('mb_crm_ultima_alerta') || '0', 10);
+  // La clave lleva `_v2` desde el paso a Postgres: la identidad de `alertas`
+  // arranca en 1 y el navegador del asesor guardaba la marca alta que dejo
+  // n8n. Con la clave vieja, ninguna alerta nueva volveria a sonar hasta
+  // superar ese numero.
+  var ultimaAlertaNotificada = parseInt(localStorage.getItem('mb_crm_ultima_alerta_v2') || '0', 10);
+  if (!isFinite(ultimaAlertaNotificada)) ultimaAlertaNotificada = 0;
   var temporizador = null;
+  var cargando = false;
+  // Acciones optimistas que el servidor todavia no confirmo. Se vuelven a
+  // aplicar sobre cada respuesta del sondeo mientras siguen aca: un sondeo que
+  // salio ANTES del clic llega con el valor viejo, y sin esto la pantalla se
+  // revertia sola a los 45 s sin ninguna explicacion.
+  var pendientes = { atendido: {}, bot: {}, alertas: {} };
 
   function $(id) { return document.getElementById(id); }
 
@@ -290,6 +339,14 @@
       body: JSON.stringify(cuerpo)
     }).then(function (r) {
       if (r.status === 401) throw new Error('clave');
+      // Un 500 trae {ok:false,error} con el motivo real (base sin configurar,
+      // por ejemplo). Se propaga en vez de dejar que el panel lo confunda con
+      // una clave mala, que es lo que hacía y mandaba a buscar donde no era.
+      if (!r.ok) {
+        return r.json().catch(function () { return null; }).then(function (j) {
+          throw new Error((j && j.error) || 'error del servidor');
+        });
+      }
       return r.json();
     });
   }
@@ -305,6 +362,8 @@
   function fechaCorta(iso) {
     if (!iso) return '';
     var d = new Date(iso);
+    // Una fecha ilegible pintaba 'NaN/NaN NaN:NaN' en cada fila.
+    if (isNaN(d.getTime())) return '';
     var hoy = new Date();
     var horas = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     if (d.toDateString() === hoy.toDateString()) return horas;
@@ -323,23 +382,77 @@
     return null;
   }
 
+  // El panel empareja por los ultimos 9 digitos, asi que un mismo cliente
+  // puede aparecer como '908900830' (lo que escribio en la landing) y como
+  // '51908900830' (lo que manda WhatsApp). Para ESCRIBIR —apagar el bot,
+  // mandar un mensaje— hay que usar el numero largo: es el que conoce el bot
+  // y el que espera Meta. Con el corto se creaba una fila paralela en
+  // conversaciones y el bot seguia contestando como si nada.
+  function telefonoCanonico(tel) {
+    var propio = soloDigitos(tel);
+    var conv = conversacionDe(propio);
+    var deConv = conv ? soloDigitos(conv.telefono) : '';
+    return deConv.length > propio.length ? deConv : propio;
+  }
+
+  // ── Avisos en pantalla ──
+  var relojAviso = null;
+  function avisar(texto, esError) {
+    var caja = $('aviso-global');
+    if (!caja) return;
+    caja.textContent = texto;
+    caja.classList.toggle('err', esError === true);
+    caja.classList.remove('oculto');
+    if (relojAviso) clearTimeout(relojAviso);
+    relojAviso = setTimeout(function () { caja.classList.add('oculto'); }, 12000);
+  }
+
+  // Acciones que cambian datos: antes salian sin mirar el resultado, asi que
+  // un fallo no se veia y el sondeo revertia la pantalla a los 45 s.
+  function accion(cuerpo, alConfirmar, alFallar) {
+    api(cuerpo).then(function (j) {
+      if (!j || j.ok !== true) throw new Error((j && j.error) || 'el servidor no confirmo el cambio');
+      // `cambiado:false` = la fila ya no esta en la base. El cambio local
+      // seria mentira: se revierte con motivo, no en silencio.
+      if (j.cambiado === false) throw new Error('esa fila ya no existe en la base');
+      if (j.aviso) avisar(j.aviso, true);
+      if (alConfirmar) alConfirmar(j);
+    }).catch(function (e) {
+      if (e && e.message === 'clave') { salir('La sesión no es válida. Ingresá la clave otra vez.'); return; }
+      if (alFallar) alFallar((e && e.message) || 'error');
+    });
+  }
+
   // ── Notificaciones ──
+  // Un solo AudioContext para toda la sesion. Antes se creaba uno por alerta
+  // y nunca se cerraba: el navegador corta a los ~6 contextos vivos, el
+  // constructor empieza a lanzar y el `catch` vacio se lo tragaba. O sea, el
+  // panel dejaba de pitar en los dias de mucha actividad, sin decir nada.
+  var audio = null;
   function pitido() {
     try {
-      var ctx = new (window.AudioContext || window.webkitAudioContext)();
-      var o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return;
+      if (!audio) audio = new Ctor();
+      // Si se creo sin gesto del usuario el navegador lo deja suspendido.
+      if (audio.state === 'suspended' && audio.resume) audio.resume();
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.connect(g); g.connect(audio.destination);
       o.frequency.value = 880; g.gain.value = 0.08;
-      o.start(); o.stop(ctx.currentTime + 0.18);
-    } catch (e) {}
+      o.start(); o.stop(audio.currentTime + 0.18);
+    } catch (e) {
+      console.warn('CRM: no se pudo emitir el pitido de alerta', e);
+    }
   }
   function avisarAlertasNuevas() {
-    var nuevas = datos.alertas.filter(function (a) { return !a.atendida && a.id > ultimaAlertaNotificada; });
+    var nuevas = datos.alertas.filter(function (a) { return !a.atendida && Number(a.id) > ultimaAlertaNotificada; });
     if (!nuevas.length) return;
     var maxId = ultimaAlertaNotificada;
-    nuevas.forEach(function (a) { if (a.id > maxId) maxId = a.id; });
+    // Number() a proposito: si el id llega como string, '9' > '10' es true por
+    // orden alfabetico y la marca de agua se queda corta para siempre.
+    nuevas.forEach(function (a) { if (Number(a.id) > maxId) maxId = Number(a.id); });
     ultimaAlertaNotificada = maxId;
-    localStorage.setItem('mb_crm_ultima_alerta', String(maxId));
+    localStorage.setItem('mb_crm_ultima_alerta_v2', String(maxId));
     pitido();
     if ('Notification' in window && Notification.permission === 'granted') {
       var a = nuevas[nuevas.length - 1];
@@ -355,20 +468,71 @@
   }
 
   // ── Carga ──
+  function lista(v) { return Array.isArray(v) ? v : []; }
+
+  // Los ids de Postgres son BIGINT. `api/crm.js` ya los traduce a numero, pero
+  // se normaliza igual del lado del panel: si alguna vez vuelven como string,
+  // `"7" === 7` es false y "Marcar vista" deja de pintar sin dar ningun error.
+  function conIdNumerico(filas) {
+    filas.forEach(function (f) {
+      if (f && f.id !== undefined && typeof f.id !== 'number') {
+        var n = Number(f.id);
+        if (isFinite(n)) f.id = n;
+      }
+    });
+    return filas;
+  }
+
+  // Vuelve a poner encima lo que el asesor ya hizo y el servidor todavia no
+  // confirmo. Sin esto, un sondeo en vuelo pisa el clic recien dado.
+  function aplicarPendientes() {
+    Object.keys(pendientes.atendido).forEach(function (folio) {
+      var valor = pendientes.atendido[folio];
+      datos.registros.forEach(function (r) { if (r.folio === folio) r.atendido = valor; });
+    });
+    Object.keys(pendientes.bot).forEach(function (tel) {
+      var valor = pendientes.bot[tel];
+      var conv = conversacionDe(tel);
+      if (conv) conv.bot_activo = valor;
+      else datos.conversaciones.push({ telefono: tel, bot_activo: valor });
+    });
+    Object.keys(pendientes.alertas).forEach(function (id) {
+      datos.alertas.forEach(function (a) { if (String(a.id) === id) a.atendida = true; });
+    });
+  }
+
+  // Una respuesta a medias (ok:true pero sin colecciones) hacia reventar el
+  // sort de la linea siguiente y dejaba `datos` mutilado hasta el proximo
+  // sondeo con exito. Se arma siempre la misma forma, pase lo que pase.
+  function aplicarDatos(j) {
+    if (!j || j.ok !== true) throw new Error('respuesta inesperada del servidor');
+    datos = {
+      registros: conIdNumerico(lista(j.registros)),
+      conversaciones: lista(j.conversaciones),
+      mensajes: conIdNumerico(lista(j.mensajes)),
+      alertas: conIdNumerico(lista(j.alertas)),
+      mensajes_recortados: j.mensajes_recortados === true
+    };
+    datos.mensajes.sort(function (a, b) { return a.id - b.id; });
+    aplicarPendientes();
+  }
+
   function cargar() {
+    // Con el servidor lento, el intervalo apilaba peticiones encima de la
+    // anterior. Si ya hay una en vuelo, este sondeo se saltea.
+    if (cargando) return Promise.resolve();
+    cargando = true;
     return api({ action: 'datos' }).then(function (j) {
-      if (!j || !j.ok) throw new Error('respuesta');
-      datos = j;
-      datos.mensajes.sort(function (a, b) { return a.id - b.id; });
+      aplicarDatos(j);
       $('estado-red').textContent = 'actualizado ' + fechaCorta(new Date().toISOString());
       $('estado-red').classList.remove('err');
       pintarTodo();
       avisarAlertasNuevas();
     }).catch(function (e) {
-      if (e.message === 'clave') { salir(); return; }
+      if (e && e.message === 'clave') { salir('La sesión no es válida. Ingresá la clave otra vez.'); return; }
       $('estado-red').textContent = 'sin conexión — reintentando';
       $('estado-red').classList.add('err');
-    });
+    }).then(function () { cargando = false; });
   }
 
   function pintarTodo() {
@@ -377,19 +541,25 @@
     if (chatAbierto) pintarChat(chatAbierto, true);
     pintarAlertas();
     actualizarTitulo();
+    $('aviso-recorte').classList.toggle('oculto', datos.mensajes_recortados !== true);
   }
 
   // ── Solicitudes ──
   function pintarSolicitudes() {
     var cont = $('lista-solicitudes');
     var lista = datos.registros.slice().sort(function (a, b) { return b.id - a.id; });
-    var pendientes = lista.filter(function (r) { return !r.atendido; });
+    // Ojo con el nombre: `pendientes` (a nivel de modulo) son las acciones sin
+    // confirmar, no las solicitudes sin atender.
+    var sinAtender = lista.filter(function (r) { return !r.atendido; });
     var badge = $('badge-solicitudes');
-    badge.textContent = pendientes.length;
-    badge.classList.toggle('visible', pendientes.length > 0);
-    if (filtroSolicitudes === 'pendientes') lista = pendientes;
+    badge.textContent = sinAtender.length;
+    badge.setAttribute('aria-label', sinAtender.length + ' solicitudes pendientes');
+    badge.classList.toggle('visible', sinAtender.length > 0);
+    if (filtroSolicitudes === 'pendientes') lista = sinAtender;
     if (!lista.length) {
-      cont.innerHTML = '<div class="vacio">No hay solicitudes ' + (filtroSolicitudes === 'pendientes' ? 'pendientes' : '') + '.</div>';
+      cont.innerHTML = '<div class="vacio">' +
+        (filtroSolicitudes === 'pendientes' ? 'No hay solicitudes pendientes.' : 'No hay solicitudes.') +
+        '</div>';
       return;
     }
     cont.innerHTML = lista.map(function (r) {
@@ -410,7 +580,9 @@
         if (conv.altitud) partes.push('Altitud: ' + escapar(conv.altitud));
         if (partes.length) cuestionario = '<div class="sol-cuestionario"><b>Cuestionario WhatsApp (' + escapar(conv.estado) + ')</b><br>' + partes.join(' · ') + '</div>';
       }
-      var botonChat = conv ? '<button class="btn-sec" data-abrir-chat="' + escapar(conv.telefono) + '">Ver chat</button>' : '';
+      // El telefono va normalizado a digitos antes de entrar en el atributo:
+      // blindar un atributo se hace normalizando, no escapando.
+      var botonChat = conv ? '<button class="btn-sec" data-abrir-chat="' + soloDigitos(conv.telefono) + '">Ver chat</button>' : '';
       return '<div class="solicitud' + (r.atendido ? ' atendida' : '') + '">' +
         '<div class="sol-cab"><span class="folio">' + escapar(r.folio) + '</span>' +
         '<span class="sol-nombre">' + escapar(r.nombre) + '</span>' +
@@ -435,9 +607,18 @@
       ch.addEventListener('change', function () {
         var folio = ch.getAttribute('data-folio');
         var marcado = ch.checked;
-        datos.registros.forEach(function (r) { if (r.folio === folio) r.atendido = marcado; });
+        var previo = !marcado;
+        datos.registros.forEach(function (r) { if (r.folio === folio) { previo = r.atendido === true; r.atendido = marcado; } });
+        pendientes.atendido[folio] = marcado;
         pintarSolicitudes();
-        api({ action: 'atendido', folio: folio, atendido: marcado });
+        accion({ action: 'atendido', folio: folio, atendido: marcado }, function () {
+          if (pendientes.atendido[folio] === marcado) delete pendientes.atendido[folio];
+        }, function (motivo) {
+          delete pendientes.atendido[folio];
+          datos.registros.forEach(function (r) { if (r.folio === folio) r.atendido = previo; });
+          pintarSolicitudes();
+          avisar('No se pudo guardar «atendido» en ' + folio + ': ' + motivo, true);
+        });
       });
     });
     cont.querySelectorAll('[data-abrir-chat]').forEach(function (b) {
@@ -450,16 +631,26 @@
 
   // ── Chats ──
   function listaTelefonos() {
-    var vistos = {}, orden = [];
-    var i, t;
-    for (i = datos.mensajes.length - 1; i >= 0; i--) {
-      t = soloDigitos(datos.mensajes[i].telefono);
-      if (t && !vistos[t]) { vistos[t] = true; orden.push(t); }
+    var orden = [];
+    // Se agrupa por los ultimos 9 digitos, igual que empareja el resto del
+    // panel: si no, el mismo cliente sale dos veces en la lista —'908900830'
+    // por un lado y '51908900830' por otro— con el hilo partido entre las dos
+    // entradas. Se conserva el numero mas largo, que es el que trae el prefijo
+    // de pais y el que hace falta para escribirle.
+    function agregar(valor) {
+      var t = soloDigitos(valor);
+      if (!t) return;
+      for (var i = 0; i < orden.length; i++) {
+        if (mismoTelefono(orden[i], t)) {
+          if (t.length > orden[i].length) orden[i] = t;
+          return;
+        }
+      }
+      orden.push(t);
     }
-    for (i = 0; i < datos.conversaciones.length; i++) {
-      t = soloDigitos(datos.conversaciones[i].telefono);
-      if (t && !vistos[t]) { vistos[t] = true; orden.push(t); }
-    }
+    var i;
+    for (i = datos.mensajes.length - 1; i >= 0; i--) agregar(datos.mensajes[i].telefono);
+    for (i = 0; i < datos.conversaciones.length; i++) agregar(datos.conversaciones[i].telefono);
     return orden;
   }
 
@@ -469,6 +660,7 @@
     var badge = $('badge-chats');
     var apagados = datos.conversaciones.filter(function (c) { return c.bot_activo === false; }).length;
     badge.textContent = apagados;
+    badge.setAttribute('aria-label', apagados + ' chats con el bot apagado');
     badge.classList.toggle('visible', apagados > 0);
     if (!tels.length) { cont.innerHTML = '<div class="vacio">Todavía no hay chats.</div>'; return; }
     cont.innerHTML = tels.map(function (tel) {
@@ -480,9 +672,13 @@
       else pills += '<span class="pill verde">bot activo</span>';
       if (conv && conv.estado) pills += '<span class="pill gris">' + escapar(conv.estado) + '</span>';
       if (conv && conv.folio) pills += '<span class="pill">' + escapar(conv.folio) + '</span>';
-      return '<button class="item-chat' + (chatAbierto === tel ? ' activa' : '') + '" data-tel="' + tel + '">' +
+      // Por los ultimos 9 digitos, no por igualdad exacta: el chat abierto
+      // puede haberse abierto con el numero corto de una solicitud.
+      return '<button class="item-chat' + (mismoTelefono(chatAbierto, tel) ? ' activa' : '') + '" data-tel="' + tel + '">' +
         '<div class="tel">+' + tel + '</div>' +
-        (ultimo ? '<div class="prev">' + (ultimo.direccion === 'in' ? '' : '↩ ') + escapar(ultimo.texto).slice(0, 70) + '</div>' : '') +
+        // Se corta ANTES de escapar: al reves, el corte puede partir una
+        // entidad HTML por la mitad y dejar '&am' o '&#' colgando.
+        (ultimo ? '<div class="prev">' + (ultimo.direccion === 'in' ? '' : '↩ ') + escapar(String(ultimo.texto == null ? '' : ultimo.texto).slice(0, 70)) + '</div>' : '') +
         '<div class="meta">' + pills + (ultimo ? '<span class="pill">' + fechaCorta(ultimo.createdAt) + '</span>' : '') + '</div>' +
         '</button>';
     }).join('');
@@ -512,6 +708,7 @@
     var botActivo = !(conv && conv.bot_activo === false);
     $('zona-interruptor').style.display = 'flex';
     $('palanca-bot').classList.toggle('si', botActivo);
+    $('palanca-bot').setAttribute('aria-checked', botActivo ? 'true' : 'false');
     $('texto-bot').textContent = botActivo ? 'Bot activo' : 'Bot apagado';
     $('zona-redactar').style.display = 'flex';
 
@@ -519,9 +716,15 @@
       zona.innerHTML = '<div class="vacio">Sin mensajes registrados con este número.</div>';
     } else {
       zona.innerHTML = msjs.map(function (m) {
-        var claseExtra = m.direccion === 'out' ? (m.autor === 'asesor' ? ' asesor' : '') : '';
-        var quien = m.direccion === 'in' ? 'Cliente' : (m.autor === 'asesor' ? 'Asesor' : 'Bot');
-        return '<div class="burbuja ' + m.direccion + claseExtra + '">' +
+        // `direccion` sale de la lista fija ['in','out'] en vez de entrar cruda
+        // en el atributo class: es el unico valor del servidor que se metia en
+        // HTML sin pasar por escapar(). Hoy lo escribe el bot, pero el dia que
+        // ese campo venga de otro lado, ahi hay un XSS que roba la clave del
+        // localStorage del asesor.
+        var direccion = m.direccion === 'out' ? 'out' : 'in';
+        var claseExtra = direccion === 'out' && m.autor === 'asesor' ? ' asesor' : '';
+        var quien = direccion === 'in' ? 'Cliente' : (m.autor === 'asesor' ? 'Asesor' : 'Bot');
+        return '<div class="burbuja ' + direccion + claseExtra + '">' +
           '<span class="quien">' + quien + '</span>' +
           escapar(m.texto) +
           '<span class="hora">' + fechaCorta(m.createdAt) + '</span></div>';
@@ -535,11 +738,31 @@
     var conv = conversacionDe(chatAbierto);
     var actual = !(conv && conv.bot_activo === false); // sin fila o sin valor = encendido
     var nuevo = !actual;
+    // Si no habia fila, `previo` queda `undefined`, que es exactamente lo que
+    // el panel lee como "bot encendido" (`!(conv && conv.bot_activo === false)`).
+    var previo = conv ? conv.bot_activo : undefined;
+    // Con el numero largo: si no, se crea una fila paralela en conversaciones
+    // y el bot —que lee la suya— sigue contestando con el interruptor en rojo.
+    var telefono = telefonoCanonico(chatAbierto);
     if (conv) conv.bot_activo = nuevo;
-    else datos.conversaciones.push({ telefono: chatAbierto, bot_activo: nuevo });
+    else datos.conversaciones.push({ telefono: telefono, bot_activo: nuevo });
+    pendientes.bot[telefono] = nuevo;
     pintarChat(chatAbierto, true);
     pintarListaChats();
-    api({ action: 'toggle_bot', telefono: chatAbierto, activo: nuevo });
+    accion({ action: 'toggle_bot', telefono: telefono, activo: nuevo }, function () {
+      if (pendientes.bot[telefono] === nuevo) delete pendientes.bot[telefono];
+    }, function (motivo) {
+      delete pendientes.bot[telefono];
+      // Revertir de verdad: dejar la palanca donde la puso el asesor cuando el
+      // cambio no llego a la base es lo que hacia que el bot siguiera
+      // contestandole al cliente mientras el asesor creia haberlo apagado.
+      var actualConv = conversacionDe(telefono);
+      if (actualConv) actualConv.bot_activo = previo;
+      pintarChat(chatAbierto, true);
+      pintarListaChats();
+      avisar('No se pudo ' + (nuevo ? 'encender' : 'apagar') + ' el bot: ' + motivo +
+             '. El bot sigue ' + (actual ? 'respondiendo' : 'apagado') + '.', true);
+    });
   }
 
   function enviarMensaje() {
@@ -548,22 +771,27 @@
     if (!texto || !chatAbierto) return;
     var boton = $('boton-enviar');
     boton.disabled = true;
-    api({ action: 'enviar', telefono: chatAbierto, texto: texto }).then(function (j) {
+    // Con el numero largo, que es el que Meta acepta.
+    var telefono = telefonoCanonico(chatAbierto);
+    api({ action: 'enviar', telefono: telefono, texto: texto }).then(function (j) {
       boton.disabled = false;
       var aviso = $('aviso-envio');
       if (j && j.ok) {
         campo.value = '';
         aviso.style.display = 'none';
-        datos.mensajes.push({ id: 1e9 + datos.mensajes.length, telefono: chatAbierto, direccion: 'out', texto: texto, autor: 'asesor', createdAt: new Date().toISOString() });
+        if (j.aviso) avisar(j.aviso, true);
+        datos.mensajes.push({ id: 1e9 + datos.mensajes.length, telefono: telefono, direccion: 'out', texto: texto, autor: 'asesor', createdAt: new Date().toISOString() });
         pintarChat(chatAbierto, false);
       } else {
         aviso.textContent = 'No se pudo enviar: ' + ((j && j.error) || 'error desconocido') + '. Si pasaron más de 24 h del último mensaje del cliente, WhatsApp bloquea el texto libre.';
         aviso.style.display = 'block';
       }
-    }).catch(function () {
+    }).catch(function (e) {
       boton.disabled = false;
+      if (e && e.message === 'clave') { salir('La sesión no es válida. Ingresá la clave otra vez.'); return; }
       var aviso = $('aviso-envio');
-      aviso.textContent = 'Error de red al enviar.';
+      aviso.textContent = 'No se pudo enviar: ' + ((e && e.message) || 'error de red') +
+        '. El mensaje sigue escrito, se puede reintentar.';
       aviso.style.display = 'block';
     });
   }
@@ -572,10 +800,11 @@
   function pintarAlertas() {
     var cont = $('lista-alertas');
     var lista = datos.alertas.slice().sort(function (a, b) { return b.id - a.id; });
-    var pendientes = lista.filter(function (a) { return !a.atendida; });
+    var sinVer = lista.filter(function (a) { return !a.atendida; });
     var badge = $('badge-alertas');
-    badge.textContent = pendientes.length;
-    badge.classList.toggle('visible', pendientes.length > 0);
+    badge.textContent = sinVer.length;
+    badge.setAttribute('aria-label', sinVer.length + ' alertas sin ver');
+    badge.classList.toggle('visible', sinVer.length > 0);
     if (!lista.length) { cont.innerHTML = '<div class="vacio">Sin alertas por ahora. Acá aparece cada vez que un cliente pide hablar con un asesor.</div>'; return; }
     cont.innerHTML = lista.map(function (a) {
       return '<div class="alerta' + (a.atendida ? ' vista' : '') + '">' +
@@ -584,15 +813,26 @@
         (a.folio ? '<span class="pill">' + escapar(a.folio) + '</span>' : '') +
         '<span class="cuando">' + fechaCorta(a.createdAt) + '</span>' +
         '<button class="btn-sec" data-chat-alerta="' + soloDigitos(a.telefono) + '">Ver chat</button>' +
-        (!a.atendida ? '<button class="btn-sec" data-vista="' + a.id + '">Marcar vista</button>' : '') +
+        (!a.atendida ? '<button class="btn-sec" data-vista="' + escapar(a.id) + '">Marcar vista</button>' : '') +
         '</div>';
     }).join('');
     cont.querySelectorAll('[data-vista]').forEach(function (b) {
       b.addEventListener('click', function () {
         var id = parseInt(b.getAttribute('data-vista'), 10);
-        datos.alertas.forEach(function (a) { if (a.id === id) a.atendida = true; });
+        if (!isFinite(id)) return;
+        // Comparacion por String: el id puede llegar como numero o, si algun
+        // dia la API deja de traducir el BIGINT, como texto.
+        datos.alertas.forEach(function (a) { if (String(a.id) === String(id)) a.atendida = true; });
+        pendientes.alertas[String(id)] = true;
         pintarAlertas(); actualizarTitulo();
-        api({ action: 'alerta_vista', id: id });
+        accion({ action: 'alerta_vista', id: id }, function () {
+          delete pendientes.alertas[String(id)];
+        }, function (motivo) {
+          delete pendientes.alertas[String(id)];
+          datos.alertas.forEach(function (a) { if (String(a.id) === String(id)) a.atendida = false; });
+          pintarAlertas(); actualizarTitulo();
+          avisar('No se pudo archivar la alerta: ' + motivo, true);
+        });
       });
     });
     cont.querySelectorAll('[data-chat-alerta]').forEach(function (b) {
@@ -613,46 +853,74 @@
     });
   }
 
+  function esperandoAcceso(si) {
+    var boton = $('boton-entrar');
+    boton.disabled = si;
+    boton.textContent = si ? 'Entrando…' : 'Entrar';
+  }
+
   function entrar() {
-    clave = $('campo-clave').value.trim();
-    if (!clave) return;
+    var intento = $('campo-clave').value.trim();
+    if (!intento || $('boton-entrar').disabled) return;
+    clave = intento;
     $('error-acceso').style.display = 'none';
+    esperandoAcceso(true);
     api({ action: 'datos' }).then(function (j) {
-      if (!j || !j.ok) throw new Error('clave');
+      aplicarDatos(j);
       localStorage.setItem('mb_crm_clave', clave);
-      datos = j;
-      datos.mensajes.sort(function (a, b) { return a.id - b.id; });
+      esperandoAcceso(false);
       arrancarApp();
-    }).catch(function () {
+    }).catch(function (e) {
+      esperandoAcceso(false);
+      // La clave se descarta al fallar: si se quedara puesta, el sondeo por
+      // `visibilitychange` seguiria mandando la clave mala contra el servidor
+      // (y ahora eso cuenta para el tope de intentos fallidos).
+      clave = '';
+      // El motivo real, no "clave incorrecta" para todo. Con el panel caído
+      // por n8n, el asesor veía "clave incorrecta" y probaba claves durante
+      // media hora contra un servidor que no estaba respondiendo.
+      $('error-acceso').textContent =
+        e && e.message && e.message !== 'clave'
+          ? 'No se pudo entrar: ' + e.message
+          : 'Clave incorrecta.';
       $('error-acceso').style.display = 'block';
     });
   }
 
-  // El sondeo consume una ejecucion de n8n cada vez. Con la pestana en
-  // segundo plano no sirve de nada, asi que se detiene y se retoma al volver.
+  // Cada sondeo es 4 consultas a Postgres. Ya no se paga por ejecucion como en
+  // n8n, asi que en segundo plano se baja el ritmo en vez de parar: parando,
+  // el pitido y la notificacion del navegador —que existen precisamente para
+  // cuando el asesor no esta mirando— no se disparaban nunca. A 5 minutos son
+  // ~288 sondeos al dia contra los ~1.900 que costaba sondear a 45 s siempre.
   function pararSondeo() {
     if (temporizador) { clearInterval(temporizador); temporizador = null; }
   }
 
   function arrancarSondeo() {
     pararSondeo();
-    if (document.hidden) return;
-    temporizador = setInterval(cargar, CADA_MS);
+    temporizador = setInterval(cargar, document.hidden ? CADA_MS_OCULTO : CADA_MS);
   }
 
   document.addEventListener('visibilitychange', function () {
     if (!clave) return;
-    if (document.hidden) { pararSondeo(); return; }
-    cargar();
-    arrancarSondeo();
+    if (!document.hidden) cargar();
+    arrancarSondeo(); // recalcula el ritmo en los dos sentidos
   });
 
-  function salir() {
+  function salir(motivo) {
     localStorage.removeItem('mb_crm_clave');
     clave = '';
+    chatAbierto = null;
+    pendientes = { atendido: {}, bot: {}, alertas: {} };
+    datos = { registros: [], conversaciones: [], mensajes: [], alertas: [], mensajes_recortados: false };
     pararSondeo();
+    document.title = 'Mining Big · CRM';
+    $('campo-clave').value = '';
+    $('error-acceso').textContent = motivo || 'Clave incorrecta.';
+    $('error-acceso').style.display = motivo ? 'block' : 'none';
     $('app').classList.add('oculto');
     $('pantalla-acceso').classList.remove('oculto');
+    $('campo-clave').focus();
   }
 
   function arrancarApp() {
@@ -690,16 +958,26 @@
     chatAbierto = null;
     pintarListaChats();
   });
+  $('boton-salir').addEventListener('click', function () { salir(); });
+  $('aviso-global').addEventListener('click', function () { this.classList.add('oculto'); });
 
   // Arranque: si hay clave guardada, probarla.
   if (clave) {
+    esperandoAcceso(true);
     api({ action: 'datos' }).then(function (j) {
-      if (j && j.ok) {
-        datos = j;
-        datos.mensajes.sort(function (a, b) { return a.id - b.id; });
-        arrancarApp();
-      } else { salir(); }
-    }).catch(function () { salir(); });
+      aplicarDatos(j);
+      esperandoAcceso(false);
+      arrancarApp();
+    }).catch(function (e) {
+      esperandoAcceso(false);
+      // Una clave guardada que ya no sirve y un servidor caido no son lo
+      // mismo: con la clave guardada el panel echaba al asesor a la pantalla
+      // de acceso en los dos casos, sin decir cual era.
+      if (e && e.message === 'clave') { salir('La clave guardada ya no sirve. Ingresá la nueva.'); return; }
+      clave = '';
+      $('error-acceso').textContent = 'No se pudo entrar: ' + ((e && e.message) || 'error del servidor');
+      $('error-acceso').style.display = 'block';
+    });
   }
 })();
 </script>

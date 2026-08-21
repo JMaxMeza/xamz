@@ -1,0 +1,13 @@
+# Datos y andamiaje que NO deben publicarse como archivos estaticos.
+#
+# Sin esto, `vercel --prod` sube db/ tal cual y
+# mining-big.com/db/registros-n8n-export.json queda accesible: son nombres,
+# correos y celulares de clientes reales. El proyecto se sirve como sitio
+# estatico, asi que todo lo que no este aqui es publico.
+db/
+
+# El README no lleva secretos, pero si el mapa del sistema: nombres de las
+# variables de entorno, rutas de las funciones, como esta armada la base.
+# Publicarlo en mining-big.com/README.md no le sirve a nadie.
+README.md
+*.sql
