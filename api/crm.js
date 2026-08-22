@@ -8,11 +8,12 @@
 //   POST /api/crm  { clave, action, ... }
 //
 //   datos         -> { ok, registros[], conversaciones[], mensajes[], alertas[],
-//                       mensajes_recortados }
+//                       correos[], mensajes_recortados }
 //   atendido      -> { ok, cambiado }              { folio, atendido }
 //   toggle_bot    -> { ok }                        { telefono, activo }
 //   alerta_vista  -> { ok, cambiado }              { id }
 //   enviar        -> { ok, aviso? } | { ok:false, error }   { telefono, texto }
+//   enviar_correo -> { ok, aviso? } | { ok:false, error }   { email, asunto, texto, folio? }
 //
 // `cambiado:false` significa que la fila no existe (folio o id que ya no
 // estan): el panel lo avisa en vez de dejar que el sondeo revierta el cambio
@@ -23,79 +24,11 @@
 // a la pantalla de acceso". Demasiadas claves fallidas seguidas desde la misma
 // IP -> 429.
 
-const { Pool, types } = require('pg');
 const crypto = require('crypto');
-const { CA_SUPABASE } = require('../lib/supabase-ca');
-
-// `pg` devuelve los BIGINT (oid 20) como STRING, porque no siempre caben en un
-// Number de JS. El panel compara ids con `===` contra numeros
-// (`parseInt(data-vista)`), y "7" === 7 es false: el marcado local no ocurria
-// nunca y "Marcar vista" no hacia nada visible hasta el sondeo siguiente.
-// Se convierten aca, que es un solo sitio, y solo cuando el valor cabe de
-// verdad en un Number; si algun dia no cabe, se deja el string y el problema
-// se ve en vez de convertirse en un id equivocado.
-types.setTypeParser(20, (valor) => {
-  const n = Number(valor);
-  return Number.isSafeInteger(n) ? n : valor;
-});
-
-// La integración oficial de Supabase con Vercel inyecta `POSTGRES_URL` sola,
-// sin que nadie copie la cadena a mano — que es como conviene hacerlo, porque
-// lleva la contraseña dentro. `DATABASE_URL` se sigue aceptando para el caso
-// de poner la variable a mano o de mudarse a otro Postgres.
-function cadenaConexion() {
-  const cruda = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
-  if (!cruda) return '';
-  // `pg` deja que lo que venga DENTRO de la cadena pise la configuración que
-  // se le pasa aparte, no al revés. Así que un `?sslmode=require` en la URL
-  // anula el `ssl: { ca }` de más abajo y la conexión vuelve a morir con
-  // SELF_SIGNED_CERT_IN_CHAIN. Se quita ese parámetro para que el TLS se
-  // decida en un solo sitio: acá, verificando contra la CA de Supabase.
-  try {
-    const u = new URL(cruda);
-    u.searchParams.delete('sslmode');
-    return u.toString();
-  } catch (e) {
-    return cruda;
-  }
-}
-
-// Una invocación de `datos` hace 4 lecturas en paralelo, así que el pool
-// necesita más de una conexión (a diferencia de `registro.js`, que hace un
-// solo INSERT). Sigue siendo pequeño: Vercel reutiliza el proceso y un
-// Postgres con pooler no debe ver más de un puñado de conexiones por
-// instancia.
-let pool;
-function obtenerPool() {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: cadenaConexion(),
-      // Verificar contra la CA de Supabase, no contra el almacén de Node.
-      // Se pasa explícito y gana sobre lo que diga el `sslmode` de la cadena.
-      ssl: { ca: CA_SUPABASE },
-      max: 4,
-      idleTimeoutMillis: 10000,
-      // El limite por defecto de una funcion Node en Vercel es 10 s. Con 8 s
-      // esperando la conexion, un arranque en frio con la base tambien fria
-      // se comia el presupuesto entero y la plataforma cortaba con un 504 sin
-      // JSON, que el panel muestra como "error del servidor" sin mas. Con 5 s
-      // quedan otros 5 para las consultas.
-      connectionTimeoutMillis: 5000,
-      // Y que una consulta colgada no se lleve por delante el resto de la
-      // invocacion: se corta sola y el error se ve en el log. Es el corte del
-      // lado del cliente (un temporizador de `pg`), no `statement_timeout`:
-      // ese viaja en los parametros de arranque de la conexion y un pooler en
-      // modo transaccion puede rechazarlo, y entonces no falla una consulta,
-      // falla la conexion entera.
-      query_timeout: 6000,
-    });
-    // Sin oyente, el error de una conexión ociosa caída tumba el proceso.
-    pool.on('error', (err) => {
-      console.error('crm: conexión ociosa del pool caída:', err.message);
-    });
-  }
-  return pool;
-}
+const { obtenerPool, cadenaConexion, soloDigitos } = require('../lib/db');
+const { enviarWhatsApp } = require('../lib/whatsapp');
+const { enviarCorreo, normalizarEmail } = require('../lib/correo');
+const { crearTope, ipDe } = require('../lib/tope-tasa');
 
 // Compara sin filtrar la respuesta por el tiempo que tarda. Se comparan los
 // SHA-256, no las cadenas: asi los dos buffers miden siempre 32 bytes y el
@@ -109,61 +42,10 @@ function claveValida(recibida) {
   return crypto.timingSafeEqual(a, b);
 }
 
-// ── Tope de tasa para los intentos de clave fallidos ──
-//
-// Es best-effort a proposito: el contador vive en la memoria de la instancia y
-// Vercel puede levantar varias, asi que no sustituye a un limitador de verdad
-// (eso necesitaria almacenamiento compartido). Lo que corta es el caso real
-// que describe el README: alguien probando claves a mano o con un script
-// simple contra el endpoint. Solo se cuentan los FALLOS: una clave correcta
-// nunca suma, de modo que el asesor no se puede autobloquear.
-const FALLOS_MAX = 10;
-const FALLOS_VENTANA_MS = 5 * 60 * 1000;
-const FALLOS_MAX_IPS = 500; // tope de memoria: la tabla no puede crecer sola
-const fallos = new Map();
-
-function ipDe(req) {
-  const cabeceras = (req && req.headers) || {};
-  const cruda = cabeceras['x-forwarded-for'] || cabeceras['x-real-ip'] || '';
-  const primera = String(Array.isArray(cruda) ? cruda[0] : cruda).split(',')[0].trim();
-  return primera || (req && req.socket && req.socket.remoteAddress) || 'sin-ip';
-}
-
-function demasiadosFallos(ip) {
-  const registro = fallos.get(ip);
-  if (!registro) return false;
-  if (Date.now() - registro.desde > FALLOS_VENTANA_MS) {
-    fallos.delete(ip);
-    return false;
-  }
-  return registro.intentos >= FALLOS_MAX;
-}
-
-function anotarFallo(ip) {
-  const ahora = Date.now();
-  const registro = fallos.get(ip);
-  if (!registro || ahora - registro.desde > FALLOS_VENTANA_MS) {
-    fallos.set(ip, { intentos: 1, desde: ahora });
-  } else {
-    registro.intentos++;
-  }
-  if (fallos.size > FALLOS_MAX_IPS) {
-    for (const [clave, valor] of fallos) {
-      if (ahora - valor.desde > FALLOS_VENTANA_MS) fallos.delete(clave);
-    }
-    // Si aun asi no baja, se vacia: perder el conteo es preferible a que la
-    // tabla crezca sin techo en un proceso que vive horas.
-    if (fallos.size > FALLOS_MAX_IPS) fallos.clear();
-  }
-}
-
-// El formulario manda '+51 999 888 777' y WhatsApp '51999888777'. Se guarda
-// siempre en dígitos para que las dos puntas se encuentren.
-function soloDigitos(valor) {
-  return String(valor === null || valor === undefined ? '' : valor)
-    .replace(/\D/g, '')
-    .slice(0, 20);
-}
+// Tope de tasa: 10 claves fallidas por IP en 5 minutos. Solo se cuentan los
+// FALLOS, de modo que el asesor no se puede autobloquear. El detalle de por
+// que es best-effort esta en `lib/tope-tasa.js`.
+const topeClaves = crearTope({ max: 10, ventanaMs: 5 * 60 * 1000 });
 
 function texto(valor, maximo) {
   if (valor === null || valor === undefined) return '';
@@ -184,8 +66,13 @@ const COMO_REGISTRO = `
 // volumen real y el corte se avisa en la respuesta.
 const TOPE_MENSAJES = 4000;
 
+// Los correos también se topan: el panel arma el hilo en el navegador, igual
+// que con los mensajes. Es más bajo que el de WhatsApp porque un correo pesa
+// mucho más que un mensaje de chat.
+const TOPE_CORREOS = 1000;
+
 async function leerTodo(bd) {
-  const [registros, conversaciones, mensajes, alertas] = await Promise.all([
+  const [registros, conversaciones, mensajes, alertas, correos] = await Promise.all([
     bd.query(`SELECT ${COMO_REGISTRO} FROM registros ORDER BY id DESC`),
     bd.query(`
       SELECT telefono, folio, estado, unidades, cuando, duracion, operador,
@@ -207,6 +94,12 @@ async function leerTodo(bd) {
       SELECT id, telefono, folio, motivo, atendida, creado_en AS "createdAt"
         FROM alertas ORDER BY id DESC
     `),
+    bd.query(
+      `SELECT id, folio, email, direccion, asunto, texto, autor,
+              message_id AS "messageId", creado_en AS "createdAt"
+         FROM correos ORDER BY id DESC LIMIT $1`,
+      [TOPE_CORREOS]
+    ),
   ]);
 
   return {
@@ -215,55 +108,11 @@ async function leerTodo(bd) {
     conversaciones: conversaciones.rows,
     mensajes: mensajes.rows.reverse(),
     alertas: alertas.rows,
+    correos: correos.rows.reverse(),
     // Para que el panel pueda avisar si algún día se está perdiendo historial.
     mensajes_recortados: mensajes.rows.length >= TOPE_MENSAJES,
+    correos_recortados: correos.rows.length >= TOPE_CORREOS,
   };
-}
-
-// Manda el texto por la API de WhatsApp Business con el mismo número del bot.
-// Devuelve el motivo cuando Meta rechaza —ventana de 24 h vencida, número no
-// autorizado— porque el panel lo muestra tal cual: decir "enviado" cuando no
-// salió es peor que fallar.
-async function enviarWhatsApp(telefono, cuerpo) {
-  const token = process.env.WHATSAPP_TOKEN;
-  const idNumero = process.env.WHATSAPP_PHONE_ID;
-  if (!token || !idNumero) {
-    return { ok: false, error: 'WhatsApp no configurado en el servidor' };
-  }
-
-  const version = process.env.WHATSAPP_API_VERSION || 'v21.0';
-  const url = `https://graph.facebook.com/${version}/${idNumero}/messages`;
-
-  let respuesta;
-  try {
-    respuesta = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: telefono,
-        type: 'text',
-        text: { preview_url: false, body: cuerpo },
-      }),
-    });
-  } catch (e) {
-    console.error('crm: no se pudo hablar con la API de WhatsApp', e);
-    return { ok: false, error: 'no se pudo contactar a WhatsApp' };
-  }
-
-  const json = await respuesta.json().catch(() => null);
-  if (!respuesta.ok) {
-    const detalle =
-      (json && json.error && (json.error.error_user_msg || json.error.message)) ||
-      `HTTP ${respuesta.status}`;
-    console.error('crm: WhatsApp rechazó el envío:', detalle);
-    return { ok: false, error: detalle };
-  }
-  return { ok: true };
 }
 
 module.exports = async function handler(req, res) {
@@ -312,8 +161,8 @@ module.exports = async function handler(req, res) {
   // un SHA-256 por request.
   const ip = ipDe(req);
   if (!claveValida(cuerpo.clave)) {
-    anotarFallo(ip);
-    if (demasiadosFallos(ip)) {
+    topeClaves.anotar(ip);
+    if (topeClaves.excedido(ip)) {
       res.setHeader('Retry-After', '300');
       return res
         .status(429)
@@ -321,14 +170,14 @@ module.exports = async function handler(req, res) {
     }
     return res.status(401).json({ ok: false, error: 'clave incorrecta' });
   }
-  fallos.delete(ip);
+  topeClaves.limpiar(ip);
 
   if (!cadenaConexion()) {
     console.error('crm: falta DATABASE_URL (o POSTGRES_URL)');
     return res.status(500).json({ ok: false, error: 'base de datos no configurada' });
   }
 
-  const bd = obtenerPool();
+  const bd = obtenerPool('crm');
   const accion = texto(cuerpo.action, 30);
 
   try {
@@ -388,7 +237,7 @@ module.exports = async function handler(req, res) {
           return res.status(400).json({ ok: false, error: 'falta telefono o texto' });
         }
 
-        const envio = await enviarWhatsApp(telefono, mensaje);
+        const envio = await enviarWhatsApp(telefono, mensaje, { quien: 'crm' });
         // Solo se registra lo que Meta aceptó. Guardar el mensaje igual
         // dejaría en el hilo una respuesta que el cliente nunca recibió, y el
         // asesor la leería como enviada.
@@ -409,6 +258,55 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({
             ok: true,
             aviso: 'el mensaje salio, pero no se pudo guardar en el historial',
+          });
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      // Mismo contrato y mismas reglas que `enviar`, por el otro canal. El
+      // correo no tiene la ventana de 24 h de Meta, así que es el que sirve
+      // para el seguimiento días después de la solicitud.
+      case 'enviar_correo': {
+        const email = normalizarEmail(cuerpo.email);
+        const asunto = texto(cuerpo.asunto, 300);
+        const mensaje = texto(cuerpo.texto, 20000);
+        const folio = texto(cuerpo.folio, 40) || null;
+        if (!email || !asunto || !mensaje) {
+          return res.status(400).json({ ok: false, error: 'falta email, asunto o texto' });
+        }
+
+        // `enRespuestaA`: si ya hay un correo del cliente en el hilo, se cuelga
+        // del último para que en su bandeja no aparezca como un correo suelto.
+        let enRespuestaA = null;
+        try {
+          const { rows } = await bd.query(
+            `SELECT message_id FROM correos
+              WHERE email = $1 AND direccion = 'in' AND message_id IS NOT NULL
+              ORDER BY id DESC LIMIT 1`,
+            [email]
+          );
+          if (rows.length) enRespuestaA = rows[0].message_id;
+        } catch (e) {
+          // Enhebrar es una mejora, no un requisito: si falla, se manda suelto.
+          console.error('crm: no se pudo buscar el hilo del correo', e.message);
+        }
+
+        const envio = await enviarCorreo({ para: email, asunto, texto: mensaje, enRespuestaA });
+        if (!envio.ok) return res.status(200).json(envio);
+
+        // A partir de acá el correo YA salió: mismo razonamiento que en
+        // `enviar`. Un 500 haría que el asesor lo reenviara.
+        try {
+          await bd.query(
+            `INSERT INTO correos (folio, email, direccion, asunto, texto, autor, message_id, en_respuesta_a)
+                  VALUES ($1, $2, 'out', $3, $4, 'asesor', $5, $6)`,
+            [folio, email, asunto, mensaje, envio.messageId || null, enRespuestaA]
+          );
+        } catch (e) {
+          console.error('crm: correo enviado pero no registrado en la base', e);
+          return res.status(200).json({
+            ok: true,
+            aviso: 'el correo salio, pero no se pudo guardar en el historial',
           });
         }
         return res.status(200).json({ ok: true });

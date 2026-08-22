@@ -194,6 +194,19 @@
     font-family: var(--display); font-size: 15px; letter-spacing: .05em; text-transform: uppercase;
   }
   .redactar button:disabled { opacity: .5; cursor: default; }
+  /* El correo lleva asunto, asi que se apila en vez de ir en fila. El boton
+     queda a la derecha, donde el ojo ya lo busca por la version de WhatsApp. */
+  .redactar-correo { flex-direction: column; align-items: stretch; }
+  .redactar-correo input {
+    padding: 9px 12px; font: inherit; font-size: 14px;
+    background: var(--fondo); color: var(--tinta); border: 1px solid var(--linea); border-radius: 4px;
+  }
+  .redactar-correo textarea { height: 96px; }
+  .redactar-correo button { align-self: flex-end; }
+  /* Un correo trae parrafos y el cliente los escribio a proposito: si se
+     colapsan los saltos, un presupuesto de 6 lineas se lee como un bloque. */
+  .burbuja.correo { max-width: 88%; white-space: pre-wrap; }
+  .burbuja .asunto { display: block; font-weight: 600; margin-bottom: 4px; }
   .aviso-envio { font-size: 12px; color: var(--oxido); padding: 0 14px 10px; display: none; }
 
   /* ── Alertas ── */
@@ -246,6 +259,7 @@
   <nav>
     <button data-tab="solicitudes" class="activa">Solicitudes <span class="badge" id="badge-solicitudes"></span></button>
     <button data-tab="chats">Chats <span class="badge" id="badge-chats"></span></button>
+    <button data-tab="correos">Correos <span class="badge" id="badge-correos"></span></button>
     <button data-tab="alertas">Alertas <span class="badge" id="badge-alertas"></span></button>
   </nav>
   <main>
@@ -289,6 +303,35 @@
       </div>
     </section>
 
+    <!-- Correo. Mismo esqueleto que Chats a proposito: el asesor no tiene que
+         aprender dos interfaces, y el CSS de `.chats` ya resuelve el partido
+         lista/hilo y el modo movil. La diferencia real es el asunto, que en
+         WhatsApp no existe. -->
+    <section id="tab-correos" class="oculto">
+      <div class="aviso-recorte oculto" id="aviso-recorte-correos" role="status">
+        El historial llegó al tope de 1.000 correos por consulta: los más
+        antiguos ya no se están descargando. Hay que paginar por hilo.
+      </div>
+      <div class="chats" id="zona-correos">
+        <div class="lista-chats" id="lista-correos"></div>
+        <div class="panel-chat">
+          <div class="chat-cab">
+            <button class="btn-sec volver" id="boton-volver-correo">←</button>
+            <span class="tel" id="correo-email">Elegí un hilo</span>
+            <span id="correo-etiquetas"></span>
+          </div>
+          <div class="mensajes" id="zona-hilo-correo"><div class="vacio">Seleccioná un hilo de la lista.</div></div>
+          <div class="aviso-envio" id="aviso-envio-correo"></div>
+          <div class="redactar redactar-correo" id="zona-redactar-correo" style="display:none">
+            <input type="text" id="campo-asunto" placeholder="Asunto" aria-label="Asunto del correo">
+            <textarea id="campo-correo" placeholder="Escribir al cliente…"
+                      aria-label="Cuerpo del correo"></textarea>
+            <button id="boton-enviar-correo">Enviar correo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="tab-alertas" class="oculto">
       <div id="lista-alertas"></div>
     </section>
@@ -312,8 +355,9 @@
   var CADA_MS_OCULTO = 300000;
 
   var clave = localStorage.getItem('mb_crm_clave') || '';
-  var datos = { registros: [], conversaciones: [], mensajes: [], alertas: [], mensajes_recortados: false };
+  var datos = { registros: [], conversaciones: [], mensajes: [], alertas: [], correos: [], mensajes_recortados: false, correos_recortados: false };
   var chatAbierto = null;
+  var correoAbierto = null;
   var filtroSolicitudes = 'pendientes';
   // La clave lleva `_v2` desde el paso a Postgres: la identidad de `alertas`
   // arranca en 1 y el navegador del asesor guardaba la marca alta que dejo
@@ -511,9 +555,12 @@
       conversaciones: lista(j.conversaciones),
       mensajes: conIdNumerico(lista(j.mensajes)),
       alertas: conIdNumerico(lista(j.alertas)),
-      mensajes_recortados: j.mensajes_recortados === true
+      correos: conIdNumerico(lista(j.correos)),
+      mensajes_recortados: j.mensajes_recortados === true,
+      correos_recortados: j.correos_recortados === true
     };
     datos.mensajes.sort(function (a, b) { return a.id - b.id; });
+    datos.correos.sort(function (a, b) { return a.id - b.id; });
     aplicarPendientes();
   }
 
@@ -539,9 +586,12 @@
     pintarSolicitudes();
     pintarListaChats();
     if (chatAbierto) pintarChat(chatAbierto, true);
+    pintarListaCorreos();
+    if (correoAbierto) pintarHiloCorreo(correoAbierto, true);
     pintarAlertas();
     actualizarTitulo();
     $('aviso-recorte').classList.toggle('oculto', datos.mensajes_recortados !== true);
+    $('aviso-recorte-correos').classList.toggle('oculto', datos.correos_recortados !== true);
   }
 
   // ── Solicitudes ──
@@ -583,6 +633,9 @@
       // El telefono va normalizado a digitos antes de entrar en el atributo:
       // blindar un atributo se hace normalizando, no escapando.
       var botonChat = conv ? '<button class="btn-sec" data-abrir-chat="' + soloDigitos(conv.telefono) + '">Ver chat</button>' : '';
+      // El correo del cliente ya esta en la solicitud: el asesor no deberia
+      // tener que copiarlo a otra pestaña para escribirle.
+      var botonCorreo = r.email ? '<button class="btn-sec" data-abrir-correo="' + escapar(String(r.email).trim().toLowerCase()) + '">Correo</button>' : '';
       return '<div class="solicitud' + (r.atendido ? ' atendida' : '') + '">' +
         '<div class="sol-cab"><span class="folio">' + escapar(r.folio) + '</span>' +
         '<span class="sol-nombre">' + escapar(r.nombre) + '</span>' +
@@ -598,7 +651,7 @@
         '</div>' + cuestionario +
         '<div class="sol-acciones">' +
         '<label class="check-atendido"><input type="checkbox" data-folio="' + escapar(r.folio) + '"' + (r.atendido ? ' checked' : '') + '> Atendido</label>' +
-        botonChat +
+        botonChat + botonCorreo +
         '<a class="btn-sec" style="text-decoration:none" href="https://wa.me/' + soloDigitos(r.telefono) + '" target="_blank" rel="noopener">WhatsApp directo</a>' +
         '</div></div>';
     }).join('');
@@ -625,6 +678,12 @@
       b.addEventListener('click', function () {
         mostrarTab('chats');
         abrirChat(b.getAttribute('data-abrir-chat'));
+      });
+    });
+    cont.querySelectorAll('[data-abrir-correo]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        mostrarTab('correos');
+        abrirCorreo(b.getAttribute('data-abrir-correo'));
       });
     });
   }
@@ -796,6 +855,183 @@
     });
   }
 
+  // ── Correos ──
+  //
+  // El correo no tiene la ventana de 24 h de Meta: es el canal que sirve para
+  // el seguimiento dias despues de la solicitud, cuando WhatsApp ya solo deja
+  // mandar plantillas aprobadas.
+
+  function emailNormal(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+
+  // Los hilos que existen, MAS los correos de las solicitudes que todavia no
+  // tienen ninguno: si solo se listaran los hilos abiertos, escribirle por
+  // primera vez a un cliente seria imposible desde aca.
+  function listaHilosCorreo() {
+    var orden = [];
+    var vistos = {};
+    function agregar(valor) {
+      var e = emailNormal(valor);
+      if (!e || vistos[e]) return;
+      vistos[e] = true;
+      orden.push(e);
+    }
+    var i;
+    for (i = datos.correos.length - 1; i >= 0; i--) agregar(datos.correos[i].email);
+    var regs = datos.registros.slice().sort(function (a, b) { return b.id - a.id; });
+    for (i = 0; i < regs.length; i++) agregar(regs[i].email);
+    return orden;
+  }
+
+  function correosDe(email) {
+    var e = emailNormal(email);
+    return datos.correos.filter(function (c) { return emailNormal(c.email) === e; });
+  }
+
+  // La solicitud mas reciente de ese correo: de ahi salen el nombre y el folio
+  // que se muestran, y el folio con el que se guarda lo que se envia.
+  function registroDeEmail(email) {
+    var e = emailNormal(email);
+    var encontrado = null;
+    for (var i = 0; i < datos.registros.length; i++) {
+      var r = datos.registros[i];
+      if (emailNormal(r.email) !== e) continue;
+      if (!encontrado || r.id > encontrado.id) encontrado = r;
+    }
+    return encontrado;
+  }
+
+  function pintarListaCorreos() {
+    var cont = $('lista-correos');
+    var hilos = listaHilosCorreo();
+    // El badge cuenta hilos donde lo ultimo es del CLIENTE: son los que estan
+    // esperando respuesta. Contar hilos a secas no dice nada accionable.
+    var esperando = hilos.filter(function (e) {
+      var c = correosDe(e);
+      return c.length && c[c.length - 1].direccion === 'in';
+    }).length;
+    var badge = $('badge-correos');
+    badge.textContent = esperando;
+    badge.setAttribute('aria-label', esperando + ' correos esperando respuesta');
+    badge.classList.toggle('visible', esperando > 0);
+
+    if (!hilos.length) { cont.innerHTML = '<div class="vacio">Todavía no hay correos ni solicitudes.</div>'; return; }
+    cont.innerHTML = hilos.map(function (email) {
+      var hilo = correosDe(email);
+      var ultimo = hilo[hilo.length - 1];
+      var reg = registroDeEmail(email);
+      var pills = '';
+      if (ultimo && ultimo.direccion === 'in') pills += '<span class="pill rojo">responder</span>';
+      else if (!hilo.length) pills += '<span class="pill gris">sin correos</span>';
+      else pills += '<span class="pill verde">respondido</span>';
+      if (reg && reg.folio) pills += '<span class="pill">' + escapar(reg.folio) + '</span>';
+      return '<button class="item-chat' + (emailNormal(correoAbierto) === email ? ' activa' : '') + '" data-email="' + escapar(email) + '">' +
+        '<div class="tel">' + escapar(reg ? reg.nombre || email : email) + '</div>' +
+        '<div class="prev">' + escapar(email) + '</div>' +
+        // Se corta ANTES de escapar, por lo mismo que en los chats: al reves,
+        // el corte puede partir una entidad HTML por la mitad.
+        (ultimo ? '<div class="prev">' + (ultimo.direccion === 'in' ? '' : '↩ ') +
+          escapar(String(ultimo.asunto == null ? '' : ultimo.asunto).slice(0, 60)) + '</div>' : '') +
+        '<div class="meta">' + pills + (ultimo ? '<span class="pill">' + fechaCorta(ultimo.createdAt) + '</span>' : '') + '</div>' +
+        '</button>';
+    }).join('');
+    cont.querySelectorAll('.item-chat').forEach(function (b) {
+      b.addEventListener('click', function () { abrirCorreo(b.getAttribute('data-email')); });
+    });
+  }
+
+  function abrirCorreo(email) {
+    correoAbierto = emailNormal(email);
+    $('zona-correos').classList.add('viendo');
+    pintarListaCorreos();
+    pintarHiloCorreo(correoAbierto, false);
+  }
+
+  function pintarHiloCorreo(email, conservarScroll) {
+    var zona = $('zona-hilo-correo');
+    var alFinal = !conservarScroll || (zona.scrollHeight - zona.scrollTop - zona.clientHeight < 60);
+    var hilo = correosDe(email);
+    var reg = registroDeEmail(email);
+    $('correo-email').textContent = email;
+    var etiquetas = '';
+    if (reg && reg.folio) etiquetas += '<span class="pill">' + escapar(reg.folio) + '</span> ';
+    if (reg && reg.nombre) etiquetas += '<span class="pill gris">' + escapar(reg.nombre) + '</span>';
+    $('correo-etiquetas').innerHTML = etiquetas;
+    $('zona-redactar-correo').style.display = 'flex';
+
+    // Asunto por defecto: si ya hay hilo, se responde el ultimo; si no, se
+    // propone uno con el folio, que es lo que el cliente reconoce.
+    var campoAsunto = $('campo-asunto');
+    if (!campoAsunto.value.trim()) {
+      var ultimo = hilo[hilo.length - 1];
+      if (ultimo && ultimo.asunto) {
+        campoAsunto.value = /^re:/i.test(ultimo.asunto) ? ultimo.asunto : 'Re: ' + ultimo.asunto;
+      } else if (reg && reg.folio) {
+        campoAsunto.value = 'Mining Big · solicitud ' + reg.folio;
+      }
+    }
+
+    if (!hilo.length) {
+      zona.innerHTML = '<div class="vacio">Sin correos con esta dirección todavía. Escribí el primero abajo.</div>';
+    } else {
+      zona.innerHTML = hilo.map(function (c) {
+        // Misma norma que en los chats: `direccion` sale de una lista fija, no
+        // entra cruda en el atributo class.
+        var direccion = c.direccion === 'out' ? 'out' : 'in';
+        var claseExtra = direccion === 'out' ? ' asesor' : '';
+        var quien = direccion === 'in' ? 'Cliente' : (c.autor === 'sistema' ? 'Sistema' : 'Asesor');
+        return '<div class="burbuja correo ' + direccion + claseExtra + '">' +
+          '<span class="quien">' + quien + '</span>' +
+          '<span class="asunto">' + escapar(c.asunto) + '</span>' +
+          escapar(c.texto) +
+          '<span class="hora">' + fechaCorta(c.createdAt) + '</span></div>';
+      }).join('');
+    }
+    if (alFinal) zona.scrollTop = zona.scrollHeight;
+  }
+
+  function enviarCorreoPanel() {
+    var campo = $('campo-correo');
+    var campoAsunto = $('campo-asunto');
+    var cuerpo = campo.value.trim();
+    var asunto = campoAsunto.value.trim();
+    var aviso = $('aviso-envio-correo');
+    if (!correoAbierto) return;
+    if (!asunto || !cuerpo) {
+      aviso.textContent = 'Falta el asunto o el cuerpo del correo.';
+      aviso.style.display = 'block';
+      return;
+    }
+    var boton = $('boton-enviar-correo');
+    boton.disabled = true;
+    var reg = registroDeEmail(correoAbierto);
+    var destino = correoAbierto;
+    api({ action: 'enviar_correo', email: destino, asunto: asunto, texto: cuerpo, folio: reg ? reg.folio : null }).then(function (j) {
+      boton.disabled = false;
+      if (j && j.ok) {
+        campo.value = '';
+        campoAsunto.value = '';
+        aviso.style.display = 'none';
+        if (j.aviso) avisar(j.aviso, true);
+        datos.correos.push({
+          id: 1e9 + datos.correos.length, email: destino, folio: reg ? reg.folio : null,
+          direccion: 'out', asunto: asunto, texto: cuerpo, autor: 'asesor',
+          createdAt: new Date().toISOString()
+        });
+        pintarHiloCorreo(destino, false);
+        pintarListaCorreos();
+      } else {
+        aviso.textContent = 'No se pudo enviar: ' + ((j && j.error) || 'error desconocido') + '.';
+        aviso.style.display = 'block';
+      }
+    }).catch(function (e) {
+      boton.disabled = false;
+      if (e && e.message === 'clave') { salir('La sesión no es válida. Ingresá la clave otra vez.'); return; }
+      aviso.textContent = 'No se pudo enviar: ' + ((e && e.message) || 'error de red') +
+        '. El correo sigue escrito, se puede reintentar.';
+      aviso.style.display = 'block';
+    });
+  }
+
   // ── Alertas ──
   function pintarAlertas() {
     var cont = $('lista-alertas');
@@ -845,7 +1081,7 @@
 
   // ── Pestañas y arranque ──
   function mostrarTab(nombre) {
-    ['solicitudes', 'chats', 'alertas'].forEach(function (t) {
+    ['solicitudes', 'chats', 'correos', 'alertas'].forEach(function (t) {
       $('tab-' + t).classList.toggle('oculto', t !== nombre);
     });
     document.querySelectorAll('nav button').forEach(function (b) {
@@ -911,11 +1147,18 @@
     localStorage.removeItem('mb_crm_clave');
     clave = '';
     chatAbierto = null;
+    correoAbierto = null;
     pendientes = { atendido: {}, bot: {}, alertas: {} };
-    datos = { registros: [], conversaciones: [], mensajes: [], alertas: [], mensajes_recortados: false };
+    datos = { registros: [], conversaciones: [], mensajes: [], alertas: [], correos: [], mensajes_recortados: false, correos_recortados: false };
     pararSondeo();
     document.title = 'Mining Big · CRM';
     $('campo-clave').value = '';
+    // Un borrador a medio escribir es del asesor que se fue, no del que entra
+    // despues: en un equipo compartido, dejarlo seria mandarle a un cliente el
+    // correo de otra conversacion.
+    $('campo-correo').value = '';
+    $('campo-asunto').value = '';
+    $('campo-mensaje').value = '';
     $('error-acceso').textContent = motivo || 'Clave incorrecta.';
     $('error-acceso').style.display = motivo ? 'block' : 'none';
     $('app').classList.add('oculto');
@@ -957,6 +1200,15 @@
     $('zona-chats').classList.remove('viendo');
     chatAbierto = null;
     pintarListaChats();
+  });
+  $('boton-enviar-correo').addEventListener('click', enviarCorreoPanel);
+  // A diferencia del chat, acá Enter NO manda: un correo lleva párrafos, y
+  // mandar a medio escribir por pulsar Enter es irreversible.
+  $('boton-volver-correo').addEventListener('click', function () {
+    $('zona-correos').classList.remove('viendo');
+    correoAbierto = null;
+    $('campo-asunto').value = '';
+    pintarListaCorreos();
   });
   $('boton-salir').addEventListener('click', function () { salir(); });
   $('aviso-global').addEventListener('click', function () { this.classList.add('oculto'); });

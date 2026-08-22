@@ -93,11 +93,19 @@ CREATE TABLE IF NOT EXISTS mensajes (
   -- una persona, que es justo lo que el asesor necesita ver.
   autor      TEXT        NOT NULL DEFAULT 'cliente'
                CHECK (autor IN ('cliente', 'bot', 'asesor')),
+  -- El id que Meta le pone al mensaje entrante. Es lo que hace que el bot no
+  -- conteste dos veces cuando Meta reintenta el webhook. NULL en los salientes.
+  wa_id      TEXT,
   creado_en  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- El panel abre siempre un hilo entero, en orden.
 CREATE INDEX IF NOT EXISTS mensajes_hilo_idx ON mensajes (telefono, id);
+
+-- Parcial: los salientes tienen `wa_id` NULL. Es el indice que necesita el
+-- `ON CONFLICT (wa_id) WHERE wa_id IS NOT NULL` del bot.
+CREATE UNIQUE INDEX IF NOT EXISTS mensajes_wa_id_idx
+  ON mensajes (wa_id) WHERE wa_id IS NOT NULL;
 
 -- La accion `datos` del CRM lee la lista de conversaciones ordenada por
 -- `actualizado_en` en cada sondeo (cada 45 s con el panel abierto). Sin este
@@ -116,6 +124,25 @@ CREATE TABLE IF NOT EXISTS alertas (
 );
 
 -- Las pendientes primero y las nuevas arriba, que es como las lista el panel.
+-- El hilo de correo con cada cliente. Detalle en `db/correos-2026-08-21.sql`.
+CREATE TABLE IF NOT EXISTS correos (
+  id          BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  folio       TEXT,
+  email       TEXT        NOT NULL,
+  direccion   TEXT        NOT NULL CHECK (direccion IN ('in', 'out')),
+  asunto      TEXT        NOT NULL DEFAULT '',
+  texto       TEXT        NOT NULL DEFAULT '',
+  autor       TEXT        NOT NULL DEFAULT 'asesor'
+                CHECK (autor IN ('cliente', 'asesor', 'sistema')),
+  message_id  TEXT,
+  en_respuesta_a TEXT,
+  creado_en   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS correos_hilo_idx ON correos (email, id);
+CREATE UNIQUE INDEX IF NOT EXISTS correos_message_id_idx
+  ON correos (message_id) WHERE message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS correos_folio_idx ON correos (folio) WHERE folio IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS alertas_pendientes_idx
   ON alertas (atendida, id DESC);
 

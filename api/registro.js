@@ -6,59 +6,15 @@
 // solo cambia la URL: el body sigue siendo {nombre, empresa, email,
 // telefono, zona, plazo, equipo[], detalle} y la respuesta {ok, folio}.
 
-const { Pool } = require('pg');
 const crypto = require('crypto');
-const { CA_SUPABASE } = require('../lib/supabase-ca');
+const { obtenerPool, cadenaConexion } = require('../lib/db');
+const { crearTope, ipDe } = require('../lib/tope-tasa');
 
-// La integración oficial de Supabase con Vercel inyecta `POSTGRES_URL` sola,
-// sin que nadie copie a mano una cadena que lleva la contraseña dentro.
-// `DATABASE_URL` se sigue aceptando, y tiene prioridad, para el caso de
-// ponerla a mano o de mudarse a otro Postgres.
-function cadenaConexion() {
-  const cruda = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
-  if (!cruda) return '';
-  // Se quita `sslmode` de la cadena: `pg` deja que lo de la URL pise la
-  // configuración explícita, y con él puesto se ignora el `ssl: { ca }` de
-  // abajo. El TLS se decide en un solo sitio. Ver `api/crm.js`.
-  try {
-    const u = new URL(cruda);
-    u.searchParams.delete('sslmode');
-    return u.toString();
-  } catch (e) {
-    return cruda;
-  }
-}
-
-// El pool vive fuera del handler a propósito: Vercel reutiliza el proceso
-// entre invocaciones y así no se abre una conexión por request.
-let pool;
-function obtenerPool() {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: cadenaConexion(),
-      // Verificar contra la CA de Supabase, no contra el almacén de Node.
-      ssl: { ca: CA_SUPABASE },
-      max: 1, // una función serverless atiende un request a la vez
-      idleTimeoutMillis: 10000,
-      // Por debajo del limite por defecto de la funcion (10 s en Vercel): con
-      // 8 s, un arranque en frio con la base tambien fria se comia casi todo
-      // el presupuesto y la plataforma cortaba con un 504 sin JSON, que la
-      // landing muestra como error generico. Ver `api/crm.js`.
-      connectionTimeoutMillis: 5000,
-      query_timeout: 6000,
-    });
-    // Sin este listener, un error en una conexión ociosa (el Postgres la
-    // cierra, se cae la red) llega como 'error' sin manejar y Node tumba
-    // el proceso entero: se pierden los registros que estuvieran en vuelo.
-    // Con el listener, la conexión rota se descarta y el pool abre otra.
-    // pg ya descarta la conexión rota y abre otra sola; lo único que hace
-    // falta es que el evento tenga oyente.
-    pool.on('error', (err) => {
-      console.error('Conexión ociosa del pool caída:', err.message);
-    });
-  }
-  return pool;
-}
+// A diferencia del CRM —que solo cuenta los intentos FALLIDOS de clave— acá se
+// cuenta cada registro aceptado: no hay forma de distinguir un envío legítimo
+// de uno automático, que es justo el problema. Ver `lib/tope-tasa.js` para por
+// qué esto es best-effort.
+const topeRegistros = crearTope({ max: 5, ventanaMs: 10 * 60 * 1000 });
 
 // Fecha en hora de Perú, no en UTC. El servidor corre en UTC y sin esto
 // los registros de la noche saldrían con el folio del día siguiente.
@@ -104,6 +60,21 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'metodo no permitido' });
+  }
+
+  // Este endpoint es público y sin autenticación: es un formulario. Sin tope,
+  // un script llena `registros` en minutos y el asesor pierde las solicitudes
+  // reales entre la basura — o sea que corta la captación sin que nadie vea un
+  // error. 5 en 10 minutos es de sobra para una persona llenando un formulario
+  // una vez, y sigue permitiendo que dos personas de la misma oficina se
+  // registren seguidas.
+  const ip = ipDe(req);
+  if (topeRegistros.excedido(ip)) {
+    res.setHeader('Retry-After', '600');
+    return res.status(429).json({
+      ok: false,
+      error: 'demasiados registros seguidos, probar de nuevo en unos minutos',
+    });
   }
 
   // Vercel ya parsea el JSON cuando el Content-Type es application/json,
@@ -165,7 +136,7 @@ module.exports = async function handler(req, res) {
   `;
 
   try {
-    const cliente = obtenerPool();
+    const cliente = obtenerPool('registro', { max: 1 });
 
     // El folio lleva 4 dígitos al azar dentro del día, así que puede
     // repetirse. Antes nadie lo notaba porque no había restricción; ahora
@@ -185,6 +156,10 @@ module.exports = async function handler(req, res) {
           registro.detalle,
           registro.origen,
         ]);
+        // Se cuenta acá y no al entrar: así un cliente que se equivoca en el
+        // correo y reintenta tres veces no se gasta el cupo con envíos que
+        // nunca llegaron a guardarse.
+        topeRegistros.anotar(ip);
         return res.status(200).json({ ok: true, folio: r.rows[0].folio });
       } catch (e) {
         // 23505 = unique_violation. Cualquier otro error es real.

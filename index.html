@@ -1521,9 +1521,13 @@
           <a href="#registro">Registrarse</a>
         </nav>
       </div>
+      <!-- El correo y el teléfono los rellena el script desde las constantes
+           de contacto: un solo lugar que cambiar. El contenido de acá es el
+           que ve alguien con JS desactivado, así que va el real, no un
+           marcador de posición. -->
       <div class="pie-contacto">
-        <a href="mailto:gerencia@mining-big.com">gerencia@mining-big.com</a>
-        <a href="tel:+000000000">+00 000 000 000</a>
+        <a href="mailto:gerencia@mining-big.com" id="pie-correo">gerencia@mining-big.com</a>
+        <a href="tel:+51934747464" id="pie-telefono">+51 934 747 464</a>
         <span style="color:var(--acero)">Lun a sáb · 07:00 – 19:00</span>
       </div>
     </div>
@@ -1541,10 +1545,39 @@
     // Ruta relativa: mismo dominio que la landing, asi que no hay CORS.
     var ENDPOINT_REGISTRO = "/api/registro";
 
-    // Número de WhatsApp del negocio, formato internacional sin + ni espacios.
-    // Hoy es el número de PRUEBA de Meta: solo responde a los 5 destinatarios
-    // autorizados en la consola. Cambiar al número real en producción.
+    // ─────────────────────────────────────────────────────────────────────
+    // DATOS DE CONTACTO — el único lugar del sitio donde viven.
+    //
+    // El pie de página se rellena desde acá (más abajo), así que cambiar el
+    // número es cambiar esta línea y nada más *en este archivo*. Fuera de este
+    // archivo hay otros dos lugares: la variable `WHATSAPP_PHONE_ID` de Vercel
+    // y `ASESOR_WHATSAPP`. La lista completa está en el README, sección
+    // "Cambiar el número de WhatsApp".
+    //
+    // ⚠️ HOY ES EL NÚMERO DE PRUEBA DE META: solo responde a los 5
+    // destinatarios cargados a mano en la consola, y no atiende público real.
+    // ─────────────────────────────────────────────────────────────────────
     var WHATSAPP_NEGOCIO = "15556371888";
+    // Cómo se muestra el teléfono en el pie. Se separa del de WhatsApp porque
+    // pueden no ser el mismo: hoy WhatsApp es un número de prueba de Meta (+1)
+    // y el teléfono del negocio es peruano.
+    var TELEFONO_VISIBLE = "+51 934 747 464";
+    var CORREO_NEGOCIO = "gerencia@mining-big.com";
+
+    // El pie se rellena desde las constantes de arriba. Si el elemento no
+    // existe (alguien lo movió), no se rompe nada: el HTML ya trae el valor.
+    (function () {
+      var t = document.getElementById("pie-telefono");
+      if (t) {
+        t.textContent = TELEFONO_VISIBLE;
+        t.setAttribute("href", "tel:+" + TELEFONO_VISIBLE.replace(/\D/g, ""));
+      }
+      var c = document.getElementById("pie-correo");
+      if (c) {
+        c.textContent = CORREO_NEGOCIO;
+        c.setAttribute("href", "mailto:" + CORREO_NEGOCIO);
+      }
+    })();
 
     var reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
