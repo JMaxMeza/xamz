@@ -263,9 +263,18 @@ async function registrarMensaje(bd, fila) {
 
 // Devuelve { ok, motivo }. `ok:true` con `motivo` significa que se dejó pasar
 // sin comprobar, que es distinto de haber comprobado bien.
+//
+// Sin `WHATSAPP_APP_SECRET` se RECHAZA. La primera versión dejaba pasar y
+// avisaba en el log, con el argumento de que una variable que falta no debería
+// tumbar la atención al cliente. Al desplegar quedó claro que el argumento no
+// se sostenía: el endpoint es público y adivinable, y sin firma cualquiera
+// puede inyectar mensajes falsos que ensucian `mensajes` y `conversaciones`.
+// Y el modo de fallo al revés es benigno: si alguien conecta Meta sin poner la
+// variable, el bot no contesta y eso se ve en el primer mensaje de prueba —
+// ruidoso y temprano, que es como conviene que fallen estas cosas.
 function firmaValida(crudo, cabecera) {
   const secreto = process.env.WHATSAPP_APP_SECRET;
-  if (!secreto) return { ok: true, motivo: 'sin WHATSAPP_APP_SECRET: firma NO comprobada' };
+  if (!secreto) return { ok: false, motivo: 'falta WHATSAPP_APP_SECRET: no se puede comprobar la firma' };
   if (!crudo) return { ok: true, motivo: 'cuerpo ya parseado: firma NO comprobada' };
   if (!cabecera) return { ok: false, motivo: 'falta X-Hub-Signature-256' };
 

@@ -19,17 +19,24 @@ n8n** — que es la regla de la agencia, no una casualidad: ver
 | Textos del bot | [`lib/bot-contenido.js`](lib/bot-contenido.js) | los 8 nodos Set de respuesta |
 | Compartido | [`lib/db.js`](lib/db.js), [`lib/whatsapp.js`](lib/whatsapp.js), [`lib/correo.js`](lib/correo.js), [`lib/tope-tasa.js`](lib/tope-tasa.js), [`lib/peticion.js`](lib/peticion.js) | — |
 
-> [!warning] El bot está reconstruido pero **sin desplegar ni conectar a Meta**
-> `api/bot.js` se rehízo desde la especificación de la wiki, porque el workflow
-> de n8n se perdió con el workspace y no se pudo ni leer. Está probado con
-> `pg` y `fetch` falsos (120 pruebas), pero **no ha recibido un solo mensaje
-> real**: falta desplegar, correr `db/bot-2026-08-21.sql`, poner dos variables
-> de entorno y **apuntar el webhook de Meta a la URL nueva**.
+> [!success] Desplegado y verificado en producción el 2026-08-21
+> Las tres migraciones están aplicadas sobre la base real, el sitio está en
+> `https://mining-big.com` y **29 comprobaciones contra el dominio pasan**,
+> incluida la de extremo a extremo: la landing guarda un registro, el CRM lo
+> ve al instante, *Atendido* persiste, y el tope de tasa corta. Las filas de
+> prueba se borraron; la base quedó con los 3 registros reales y nada más.
+
+> [!warning] Faltan dos conexiones con terceros, y las dos son de cuenta ajena
+> 1. **El webhook de Meta no apunta al bot.** El endpoint responde la
+>    verificación, pero hasta que Meta no lo apunte, **nadie contesta a los
+>    clientes que escriben** y las pestañas Chats y Alertas siguen vacías.
+>    Falta además `WHATSAPP_APP_SECRET`, sin la cual el bot **rechaza todo**
+>    (ver *Anti-duplicado y firma*).
+> 2. **No hay proveedor de correo contratado.** El botón de correo dice
+>    "el correo no está configurado en el servidor", que es la verdad.
 >
-> Hasta entonces las pestañas **Chats** y **Alertas** del CRM siguen vacías, y
-> **nadie responde a los clientes que escriben**. La pestaña Solicitudes sí
-> funciona con datos reales, y escribir como asesor también: esa acción llama
-> directo a la API de WhatsApp, sin pasar por el bot.
+> Lo que sí funciona hoy: la landing, la captación de registros, y el panel con
+> Solicitudes sobre datos reales.
 
 ## Captura de registros
 
@@ -197,6 +204,21 @@ Cualquier Postgres gestionado sirve (Neon, Supabase, Vercel Postgres…). El
 código usa `pg` y SQL estándar, sin nada específico de un proveedor: si mañana
 hay que mudarse, se cambia la URL y ya.
 
+> [!success] Ya aplicadas en la base real el 2026-08-21
+> Los seis pasos de abajo están corridos contra el Postgres de producción, y
+> comprobados: existen `correos`, `mensajes.wa_id` y los 4 índices nuevos, la
+> consulta de teléfonos mal normalizados devolvió **0 filas**, y los 3
+> registros reales siguen intactos. Esta sección queda como referencia para
+> montar la base desde cero.
+>
+> **Cómo se corrieron, para que no sorprenda en el historial de git:** las
+> variables del proyecto están marcadas *Sensitive* en Vercel, así que
+> `vercel env pull` devuelve `[SENSITIVE]` y la cadena de conexión no se puede
+> leer desde fuera — la protección funcionando. Se usó un endpoint temporal
+> (`api/migracion.js`) que corría el DDL desde dentro, donde `DATABASE_URL` sí
+> existe, protegido por un secreto de un solo uso. **Se borró junto con su
+> variable en cuanto terminó**; `POST /api/migracion` devuelve 404.
+
 En el editor SQL del proveedor, correr en este orden:
 
 1. [`db/schema.sql`](db/schema.sql) — crea la tabla `registros`.
@@ -269,9 +291,19 @@ ponerlas antes de configurar el webhook en Meta**:
   de Meta. Con ella el bot comprueba la firma `X-Hub-Signature-256` de cada
   POST y **rechaza con 401 lo que no venga de Meta**. Sin ella el bot sigue
   funcionando pero **deja pasar cualquier POST** y escribe
-  `bot: ATENCION — sin WHATSAPP_APP_SECRET: firma NO comprobada` en el log en
-  cada mensaje. Era el pendiente número uno del bot viejo, que no tenía forma
-  de validarla: no la pongas "después".
+  **rechaza con 401 todos los POST**. Era el pendiente número uno del bot
+  viejo, que no tenía forma de validarla.
+
+> [!warning] Sin `WHATSAPP_APP_SECRET` el bot no contesta a nadie
+> La primera versión dejaba pasar y avisaba en el log, con el argumento de que
+> una variable que falta no debería tumbar la atención al cliente. **Al
+> desplegar quedó claro que el argumento no se sostenía:** el endpoint es
+> público y adivinable, y sin firma cualquiera puede inyectar mensajes falsos
+> que ensucian `mensajes` y `conversaciones`.
+>
+> Ahora falla al revés, y ese modo de fallo es el benigno: si alguien conecta
+> Meta sin poner la variable, el bot no contesta, y eso se ve en el primer
+> mensaje de prueba del paso 5. Ruidoso y temprano.
 
 Las de correo se pueden dejar para después **sin romper nada**: sin ellas el
 CRM funciona entero y solo el botón de enviar correo responde *"el correo no
@@ -311,6 +343,19 @@ conteste; y que el pie muestre el teléfono correcto.
 
 Marcarlas para Production, Preview y Development. **Hay que redeployar** después
 de agregarlas: las variables se inyectan en el build, no en caliente.
+
+> [!info] Estado al 2026-08-21
+> **Puestas:** `DATABASE_URL`, `CRM_CLAVE` (las dos marcadas *Sensitive*),
+> `WHATSAPP_VERIFY_TOKEN` y `CORREO_WEBHOOK_SECRET` (generadas al azar; se
+> pueden ver en el panel de Vercel).
+> **Faltan, y son de cuenta ajena:** `WHATSAPP_TOKEN` y `WHATSAPP_PHONE_ID`
+> (Meta), `WHATSAPP_APP_SECRET` (Meta), `CORREO_API_KEY` y `CORREO_REMITENTE`
+> (el proveedor de correo, sin contratar).
+>
+> Ojo con `WHATSAPP_TOKEN` y `WHATSAPP_PHONE_ID`: **nunca estuvieron puestas**,
+> ni antes de este trabajo. O sea que el botón *escribir como asesor* del panel
+> no ha funcionado nunca en producción — respondía "WhatsApp no configurado en
+> el servidor", que al menos es honesto.
 
 **La clave del CRM va en `CRM_CLAVE` y en ningún archivo.** En n8n estaba
 escrita dentro del workflow; acá el código no la contiene, así que el repo se
@@ -381,6 +426,21 @@ Repetir la clave mala **once veces seguidas** debe acabar en `429` con
 nada por dispararlo en la verificación: solo bloquea a esa IP y solo durante
 cinco minutos, y **únicamente cuenta los fallos** — con la clave correcta se
 entra igual.
+
+> [!warning] `vercel.json`: el patrón con `:ruta*` NO cubre la barra final
+> Comprobado contra el dominio el 2026-08-21: con solo `"/crm/:ruta*"`, la
+> ruta `/crm` traía la CSP y **`/crm/` no traía ninguna cabecera** — y `/crm/`
+> es justo la URL que usa el asesor y la que está escrita en la wiki. O sea que
+> la CSP no estaba protegiendo nada en la práctica.
+>
+> Por eso hay **tres** entradas con el mismo bloque: `/crm`, `/crm/` y
+> `/crm/:ruta*`. Es feo y es a propósito. Si algún día se agrega una cabecera,
+> hay que agregarla en las tres — y volver a comprobar con
+> `curl -sI https://mining-big.com/crm/`, con la barra.
+>
+> Ojo también: `vercel.json` **no admite comentarios** ni propiedades extra. Un
+> `"//"` explicativo hace fallar el despliegue entero con *"should NOT have
+> additional property"*.
 
 Las cabeceras de `/crm/` las fija [`vercel.json`](vercel.json): `X-Frame-Options`,
 `nosniff`, `Referrer-Policy` y una CSP que, entre otras cosas, impide que un

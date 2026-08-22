@@ -10,3 +10,7 @@ desktop.ini
 # pero el dia que alguien corra `npm install` y despues `git add -A`, entran
 # miles de archivos al repo si esto no esta.
 node_modules/
+
+# Secretos que baja `vercel env pull`. Nunca al repo.
+.env
+.env.*
