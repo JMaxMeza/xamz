@@ -7,20 +7,25 @@
 // respuesta y la mete en la tabla `correos`, de modo que en el panel el hilo se
 // ve completo — igual que Chats con WhatsApp.
 //
-// ── Estado: la estructura está, el formato exacto no está verificado ─────────
+// ── Estado: probado de punta a punta contra Resend real (2026-09-02) ─────────
 //
-// La firma y el enrutado están hechos y probados. Lo que NO se pudo verificar
-// contra algo real es **la forma exacta del payload** que manda el proveedor,
-// porque no hay cuenta todavía. Por eso `interpretar()` acepta varias formas
-// conocidas y, cuando no reconoce ninguna, **escribe en el log las claves que
-// recibió**: el primer correo real que llegue dice qué shape es, y ajustarlo es
-// editar una función.
+// La firma quedó cerrada el 2026-09-01: Resend delega el envío de webhooks en
+// Svix, así que se verifica la firma Svix real en vez de un secreto compartido
+// en cabecera. Referencia:
+// https://docs.svix.com/receiving/verifying-payloads/how-manual
 //
-// No se inventó una validación de firma específica de proveedor por el mismo
-// motivo: cada uno firma distinto (Resend usa Svix, Mailgun HMAC propio) y
-// escribir la de uno a ciegas daría una falsa sensación de seguridad. En su
-// lugar hay un secreto compartido en cabecera, que **todo** proveedor sabe
-// mandar, y un lugar marcado para enchufar la firma real cuando se elija.
+// El payload del webhook, confirmado con un correo real:
+//   { type: 'email.received', data: { from, to, subject, message_id,
+//     email_id, received_for, created_at, attachments, cc, bcc } }
+// SIN `text` NI `html`. La primera versión de este archivo asumía que el
+// cuerpo venía en el propio webhook (como Mailgun o Postmark) — para Resend
+// es al revés: el webhook es solo una notificación con `data.email_id`, y el
+// cuerpo real hay que pedirlo aparte con
+// `GET https://api.resend.com/emails/receiving/{email_id}`. Confirmado contra
+// la documentación oficial:
+// https://resend.com/docs/api-reference/emails/retrieve-received-email
+// Sin este segundo viaje, el correo se guardaba con folio y remitente
+// correctos y el cuerpo vacío — no fallaba, así que no se notaba solo.
 
 const crypto = require('crypto');
 const { obtenerPool, cadenaConexion } = require('../lib/db');
@@ -29,21 +34,70 @@ const { CONFIG_SIN_PARSEO, cuerpoCrudo } = require('../lib/peticion');
 
 module.exports.config = CONFIG_SIN_PARSEO;
 
-// ── Autenticación ────────────────────────────────────────────────────────────
+// ── Autenticación (firma Svix de Resend) ─────────────────────────────────────
+
+// Svix recomienda esta ventana contra ataques de repetición: un atacante que
+// capturó un webhook viejo no puede reenviarlo pasado este tiempo, aun con la
+// firma intacta.
+const TOLERANCIA_RELOJ_SEG = 5 * 60;
 
 // A diferencia del bot, acá NO hay modo "pasa igual y avisa". El bot que deja
 // pasar un POST falso responde una tontería; este endpoint **escribe en la
-// base**, así que sin secreto configurado no se atiende a nadie. Es el mismo
+// base**, así que sin firma comprobada no se atiende a nadie. Es el mismo
 // criterio que `CRM_CLAVE`: que no exista un modo abierto.
-function secretoValido(req) {
-  const esperado = process.env.CORREO_WEBHOOK_SECRET;
-  if (!esperado) return { ok: false, motivo: 'sin CORREO_WEBHOOK_SECRET', configurar: true };
+//
+// `CORREO_WEBHOOK_SECRET` ya no es el secreto arbitrario de antes: es el
+// *signing secret* que la propia consola de Resend entrega al crear el
+// endpoint del webhook (empieza con `whsec_`). Mismo nombre de variable,
+// contenido distinto — hay que reemplazarlo al conectar el proveedor real.
+function firmaValida(crudo, cabeceras) {
+  const secreto = process.env.CORREO_WEBHOOK_SECRET;
+  if (!secreto) return { ok: false, motivo: 'sin CORREO_WEBHOOK_SECRET', configurar: true };
+  if (!crudo) return { ok: false, motivo: 'no se pudo leer el cuerpo crudo: no se puede comprobar la firma' };
 
-  const recibido = req.headers['x-mb-secreto'] || '';
-  const a = Buffer.from(String(recibido));
-  const b = Buffer.from(String(esperado));
-  if (a.length !== b.length) return { ok: false, motivo: 'secreto con largo distinto' };
-  return crypto.timingSafeEqual(a, b) ? { ok: true } : { ok: false, motivo: 'secreto incorrecto' };
+  const id = cabeceras['svix-id'];
+  const marca = cabeceras['svix-timestamp'];
+  const firmas = cabeceras['svix-signature'];
+  if (!id || !marca || !firmas) return { ok: false, motivo: 'faltan cabeceras svix-*' };
+
+  const segundos = Number(marca);
+  if (!Number.isFinite(segundos)) return { ok: false, motivo: 'svix-timestamp invalido' };
+  if (Math.abs(Date.now() / 1000 - segundos) > TOLERANCIA_RELOJ_SEG) {
+    return { ok: false, motivo: 'svix-timestamp fuera de tolerancia (posible repeticion)' };
+  }
+
+  // El secreto de Svix viaja como 'whsec_' + base64: sin sacar el prefijo se
+  // firma con la cadena de texto entera en vez de con la clave real, y el HMAC
+  // no coincide nunca aunque el secreto esté bien copiado.
+  const base64Secreto = secreto.startsWith('whsec_') ? secreto.slice('whsec_'.length) : secreto;
+  let claveBytes;
+  try {
+    claveBytes = Buffer.from(base64Secreto, 'base64');
+  } catch (e) {
+    return { ok: false, motivo: 'CORREO_WEBHOOK_SECRET no tiene forma de secreto Svix' };
+  }
+
+  const contenidoFirmado = `${id}.${marca}.${crudo.toString('utf8')}`;
+  const esperadaBuf = crypto.createHmac('sha256', claveBytes).update(contenidoFirmado).digest();
+
+  // `svix-signature` trae una o más firmas separadas por espacio —Svix manda
+  // varias durante una rotación de secreto—, cada una 'v1,<base64>'. Alcanza
+  // con que UNA coincida.
+  const candidatas = String(firmas).split(' ').map((s) => s.trim()).filter(Boolean);
+  for (const candidata of candidatas) {
+    const [version, valor] = candidata.split(',');
+    if (version !== 'v1' || !valor) continue;
+    let candidataBuf;
+    try {
+      candidataBuf = Buffer.from(valor, 'base64');
+    } catch (e) {
+      continue;
+    }
+    if (candidataBuf.length === esperadaBuf.length && crypto.timingSafeEqual(candidataBuf, esperadaBuf)) {
+      return { ok: true };
+    }
+  }
+  return { ok: false, motivo: 'ninguna firma svix-signature coincide' };
 }
 
 // ── Interpretación del payload ───────────────────────────────────────────────
@@ -66,7 +120,8 @@ function soloDireccion(valor) {
 }
 
 // Acepta las formas que usan hoy los proveedores más probables. Si mañana el
-// elegido manda otra, se agrega acá y nada más se toca.
+// elegido manda otra, se agrega acá y nada más se toca. `texto` casi siempre
+// sale vacío de acá con Resend a propósito — ver `obtenerCorreoCompleto()`.
 function interpretar(cuerpo) {
   if (!cuerpo || typeof cuerpo !== 'object') return null;
   // Resend envuelve el evento: { type: 'email.received', data: { ... } }.
@@ -79,15 +134,55 @@ function interpretar(cuerpo) {
   return {
     de,
     asunto: String(primero(d.subject, d.Subject, cuerpo.subject) || '(sin asunto)').slice(0, 300),
-    // `text` es el cuerpo en texto plano. Si el cliente escribió en HTML y el
-    // proveedor no manda texto, se guarda vacío antes que guardar etiquetas:
-    // el asesor lee esto en el panel.
+    // `text` es el cuerpo en texto plano. Si el proveedor no lo manda en el
+    // webhook (Resend: nunca), se completa con `obtenerCorreoCompleto()` más
+    // abajo; si ESO también falla, se guarda vacío antes que guardar
+    // etiquetas HTML — el asesor lee esto en el panel.
     texto: String(primero(d.text, d['body-plain'], d.plain, cuerpo.text) || '').slice(0, 20000),
     messageId: String(
       primero(d.message_id, d.messageId, cabeceras['message-id'], cabeceras['Message-ID']) || ''
     ).slice(0, 500) || null,
     enRespuestaA: String(
       primero(d.in_reply_to, cabeceras['in-reply-to'], cabeceras['In-Reply-To']) || ''
+    ).slice(0, 500) || null,
+    // El id INTERNO de Resend para este correo (no el Message-ID de RFC822):
+    // hace falta para pedir el cuerpo. Los demás proveedores no lo mandan, y
+    // `obtenerCorreoCompleto()` ya sabe no hacer nada sin esto.
+    emailId: String(primero(d.email_id, d.id) || '') || null,
+  };
+}
+
+// El webhook de Resend es una notificación, no el correo: `text` y `html`
+// viven en la API de recepción, no en el payload que llega a este endpoint.
+// Confirmado el 2026-09-02 contra un correo real y contra la documentación
+// oficial (ver la nota de arriba). Devuelve `{ texto, enRespuestaA }` o
+// `null` si no se pudo traer — el llamador decide si eso amerita reintento.
+async function obtenerCorreoCompleto(emailId) {
+  const clave = process.env.CORREO_API_KEY;
+  if (!clave) {
+    console.error('correo: falta CORREO_API_KEY, no se puede pedir el cuerpo del correo entrante');
+    return null;
+  }
+  let respuesta;
+  try {
+    respuesta = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}`, {
+      headers: { Authorization: `Bearer ${clave}` },
+    });
+  } catch (e) {
+    console.error('correo: no se pudo contactar la API de recepción de Resend:', e.message);
+    return null;
+  }
+  if (!respuesta.ok) {
+    console.error('correo: la API de recepción de Resend respondió', respuesta.status);
+    return null;
+  }
+  const detalle = await respuesta.json().catch(() => null);
+  if (!detalle) return null;
+  const cabeceras = (detalle.headers && typeof detalle.headers === 'object') ? detalle.headers : {};
+  return {
+    texto: String(detalle.text || '').slice(0, 20000),
+    enRespuestaA: String(
+      primero(cabeceras['in-reply-to'], cabeceras['In-Reply-To']) || ''
     ).slice(0, 500) || null,
   };
 }
@@ -101,7 +196,11 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'metodo no permitido' });
   }
 
-  const permiso = secretoValido(req);
+  // La firma se computa sobre los BYTES exactos: tiene que leerse antes que
+  // nada le dispare el parseo perezoso de `req.body` (ver `lib/peticion.js`).
+  const crudo = await cuerpoCrudo(req).catch(() => null);
+
+  const permiso = firmaValida(crudo, req.headers);
   if (!permiso.ok) {
     if (permiso.configurar) {
       console.error('correo: falta la variable de entorno CORREO_WEBHOOK_SECRET');
@@ -111,14 +210,17 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ ok: false, error: 'no autorizado' });
   }
 
-  const crudo = await cuerpoCrudo(req).catch(() => null);
-  let cuerpo = req.body;
+  // `req.body` solo se toca si no hubo bytes crudos: es un getter perezoso y
+  // leerlo dispara el parseo que se quiere evitar. Ver `lib/peticion.js`.
+  let cuerpo;
   if (crudo) {
     try {
       cuerpo = JSON.parse(crudo.toString('utf8'));
     } catch (e) {
       return res.status(400).json({ ok: false, error: 'json invalido' });
     }
+  } else {
+    cuerpo = req.body;
   }
 
   const correo = interpretar(cuerpo);
@@ -135,6 +237,26 @@ module.exports = async function handler(req, res) {
     // 200 para que el proveedor no reintente en bucle algo que no va a mejorar
     // solo. El log ya tiene lo necesario para arreglarlo.
     return res.status(200).json({ ok: false, error: 'formato no reconocido' });
+  }
+
+  // Resend nunca manda el cuerpo en el webhook: hay que pedirlo aparte. Si la
+  // API de recepción falla (no la falta de la clave, que no se arregla sola),
+  // se corta acá con 500 para que Resend reintente el webhook completo más
+  // tarde — guardar el correo con el cuerpo vacío sería peor que tardar un
+  // poco más en tenerlo bien.
+  if (correo.emailId && !correo.texto) {
+    const completo = await obtenerCorreoCompleto(correo.emailId);
+    if (completo) {
+      correo.texto = completo.texto;
+      if (completo.enRespuestaA) correo.enRespuestaA = completo.enRespuestaA;
+    } else if (process.env.CORREO_API_KEY) {
+      // Con la clave puesta, un fallo acá es de red o de la API de Resend:
+      // vale la pena que Resend reintente. Sin la clave, reintentar no
+      // cambia nada — se sigue de largo y se guarda con el cuerpo vacío,
+      // igual que un proveedor que de verdad no manda texto.
+      console.error('correo: no se pudo completar el cuerpo del correo', correo.emailId, '— se reintentará');
+      return res.status(500).json({ ok: false, error: 'no se pudo completar el correo' });
+    }
   }
 
   if (!cadenaConexion()) {
@@ -173,5 +295,6 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.interpretar = interpretar;
+module.exports.obtenerCorreoCompleto = obtenerCorreoCompleto;
 module.exports.soloDireccion = soloDireccion;
-module.exports.secretoValido = secretoValido;
+module.exports.firmaValida = firmaValida;

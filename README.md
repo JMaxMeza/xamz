@@ -175,26 +175,117 @@ como única), verifica el dominio propio que ya existe (mining-big.com), y tiene
 entrada de correo para las respuestas. Agregar otro es agregar una entrada al
 objeto `PROVEEDORES`.
 
-> [!warning] Hay que verificar el dominio antes de mandar el primer correo
-> Sin los registros DNS del proveedor, los correos van a spam o rebotan. El
-> remitente (`CORREO_REMITENTE`) tiene que ser una dirección de un dominio
-> verificado — `gerencia@mining-big.com`, no un Gmail.
+> [!success] Entregado y verificado de punta a punta el 2026-09-02
+> Enviar funciona desde el 2026-09-01 22:57 (primer correo real recibido en
+> una bandeja externa); recibir funciona desde el 2026-09-02, con el cuerpo
+> real del mensaje, no solo metadata. Detalle completo de cómo quedó armado el
+> DNS y los tres tropiezos reales (dominio raíz vs. subdominio, el webhook sin
+> cuerpo, el permiso de la API key) en [[crm-mining-big]] → *Proveedor de
+> correo: Resend*.
 
-### La entrada de correo: qué está probado y qué no
+**Cómo quedó armado**, en una tabla — dos identidades de dominio separadas en
+Resend, ninguna toca el DNS que ya usa Microsoft 365:
 
-`POST /api/correo` exige un secreto compartido en la cabecera `x-mb-secreto`.
-**No hay modo "pasa igual y avisa"** como en el bot: este endpoint escribe en la
-base, así que sin `CORREO_WEBHOOK_SECRET` configurado responde 500 y no atiende
-a nadie.
+| Rol | Dominio en Resend | Variable |
+|---|---|---|
+| Enviar | `mining-big.com` (el dominio raíz — verificado ahí, no en un subdominio) | `CORREO_REMITENTE` = `Mining Big <gerencia@mining-big.com>` |
+| Recibir | `responde.mining-big.com` (subdominio, dominio **aparte** en Resend) | `CORREO_RESPONDER_A` = `respuestas@responde.mining-big.com` |
 
-Lo que **no** se pudo verificar es la forma exacta del payload, porque no hay
-cuenta con la que probarlo. `interpretar()` acepta varias formas conocidas y,
-cuando no reconoce ninguna, **escribe en el log las claves que recibió** (nunca
-los valores: el cuerpo de un correo es dato personal). El primer correo real
-dice qué formato es, y ajustarlo es editar esa función.
+`CORREO_RESPONDER_A` (ya estaba en `lib/correo.js`, sin usar hasta ahora) es
+lo que hace que esto sea invisible para el cliente: el remitente que ve sigue
+siendo `gerencia@mining-big.com`, pero la respuesta viaja por `Reply-To` hacia
+el subdominio que sí puede recibir.
 
-Si el proveedor firma con HMAC en vez de aceptar una cabecera fija —Resend usa
-Svix—, `secretoValido()` es el único lugar a tocar.
+### El proveedor está aislado a propósito
+
+La lección de `wiki/conceptos/sin-n8n.md` es reciente: tres sistemas murieron a
+la vez porque dependían de un servicio alojado que se apagó. Para el correo
+hace falta *alguien* que lo entregue, pero el daño se acota si cambiar de
+proveedor es escribir una función en `lib/correo.js` y tocar dos variables.
+
+Está implementado **Resend**, elegido por tres razones concretas: habla HTTP
+(así que **no agrega ninguna dependencia npm** — el proyecto sigue con `pg`
+como única), verifica el dominio propio que ya existe (mining-big.com), y tiene
+entrada de correo para las respuestas. Agregar otro es agregar una entrada al
+objeto `PROVEEDORES`.
+
+### La entrada de correo: firma verificada, payload confirmado contra un correo real
+
+`POST /api/correo` verifica la **firma Svix real de Resend** en
+`svix-signature` (2026-09-01) — HMAC-SHA256 sobre `id.timestamp.cuerpo`, con
+tolerancia de reloj de 5 minutos contra repetición. El algoritmo se comprobó
+contra el vector de prueba oficial de Svix, byte a byte, no solo "no tira
+error". **No hay modo "pasa igual y avisa"** como en el bot: este endpoint
+escribe en la base, así que sin `CORREO_WEBHOOK_SECRET` configurado responde
+500 y no atiende a nadie.
+
+`CORREO_WEBHOOK_SECRET` **cambió de contenido, no de nombre**: ya no es el
+secreto arbitrario que se usaba con la cabecera `x-mb-secreto` (eso se retiró
+entero) — es el *signing secret* que la consola de Resend entrega al crear el
+endpoint del webhook, con forma `whsec_...`.
+
+> [!bug] El webhook de Resend no trae el cuerpo del correo — hay que pedirlo aparte
+> Confirmado el 2026-09-02 con un correo real: el payload de `email.received`
+> trae `from`, `subject`, `message_id`, `email_id` y metadata — **nunca `text`
+> ni `html`**. `interpretar()` asumía que el cuerpo venía en el propio webhook
+> (como mandan Mailgun o Postmark); para Resend es al revés: el webhook es solo
+> una notificación, y el cuerpo real se pide con
+> `GET https://api.resend.com/emails/receiving/{email_id}`
+> ([referencia oficial](https://resend.com/docs/api-reference/emails/retrieve-received-email)).
+> Sin ese segundo viaje, el correo se guardaba con folio y remitente
+> correctos y **el cuerpo vacío** — no fallaba, así que no se notaba solo. Ya
+> está resuelto en `api/correo.js` (`obtenerCorreoCompleto()`), y si esa
+> segunda llamada falla se responde 500 a propósito para que Resend reintente
+> el webhook entero — guardar con el cuerpo vacío es peor que tardar un poco
+> más en tenerlo bien.
+>
+> **Y una trampa más, la que costó más tiempo diagnosticar:** esa segunda
+> llamada daba **401** aunque la clave fuera correcta. Las API keys de Resend
+> tienen dos niveles — *Sending access* (la que recomiendan por defecto) y
+> *Full access*— y traer un correo recibido es una operación de lectura que
+> exige *Full access*. La clave usada para enviar tenía el nivel por defecto.
+> Se sube el permiso de la misma clave en Resend (API Keys → la clave → Full
+> access), sin generar una nueva ni tocar Vercel.
+
+## El panel en el teléfono
+
+El CRM se abre desde el celular tanto como desde el escritorio: el asesor
+contesta un WhatsApp parado en la obra, no sentado. El panel siempre fue una
+página responsive, pero **responsive no es lo mismo que usable con el pulgar**,
+y ahí había siete cosas rotas. Corregidas el 2026-09-01, todas dentro de
+[`crm/index.html`](crm/index.html):
+
+| Qué pasaba en el teléfono | Qué se hizo |
+|---|---|
+| Las pestañas se pegaban encima del título o dejaban una franja de fondo | Encabezado y pestañas viajan juntos en `.barra`, una sola caja pegajosa. El `top: 47px` escrito a mano —cierto solo en escritorio— ya no existe |
+| La cuarta pestaña, **Alertas**, se cortaba sin señal de que hubiera algo más | La fila rueda de costado, con un desvanecido en el borde derecho que aparece **solo** mientras quede algo por ver, y la pestaña activa se trae sola a la vista |
+| Enfocar el campo de escribir **hacía zoom y no lo deshacía**: el panel quedaba corrido el resto de la sesión | Todos los campos a 16 px con puntero grueso, que es el umbral por debajo del cual Safari hace zoom |
+| Los botones medían 29 px de alto: se fallan con el dedo | 44 px mínimo (botones, pestañas, filas de la lista, casilla *Atendido*, palanca del bot) en `@media (pointer: coarse)` |
+| Con un chat abierto, el botón **Enviar** caía fuera de pantalla y había que hacer scroll de la página para llegar | El hilo ocupa exactamente lo que queda de ventana. El alto lo mide el JS (`ajustarAltoHilo()`), no el CSS: arriba puede haber o no el aviso de recorte, y el encabezado cambia de alto con las etiquetas |
+| El aviso de error salía abajo y al centro, **tapando justo el botón Enviar** | En pantalla angosta sale arriba, bajo la barra |
+| El campo de escribir medía 44 px fijos: un mensaje de cuatro líneas se redactaba viendo una | Crece con el texto hasta 140 px (240 en correo) |
+
+Y tres cosas menores que solo se notan en un teléfono real: las zonas seguras
+del notch y de la barra de inicio (`env(safe-area-inset-*)`, que `viewport-fit=cover`
+ya prometía pero nadie cumplía), el scroll de la lista de mensajes que ya no
+arrastra la página —ni dispara la recarga por tirón—, y el interruptor del bot,
+que caía solo en una tercera fila del encabezado y ahora sube al lado del número.
+
+> [!warning] Un bug que no era de diseño: el panel se quedaba sin sondear
+> `Notification.requestPermission()` **lanza** en Safari si no sale de un gesto
+> del usuario, y en iOS ni siquiera existe fuera de una app instalada en la
+> pantalla de inicio. Estaba sin `try`, y la línea siguiente era
+> `arrancarSondeo()`: en iOS la excepción se la llevaba por delante y el panel
+> **no volvía a consultar nunca**. Datos congelados en la pantalla, ninguna
+> pista de por qué. Hoy va envuelto.
+
+**Con qué se comprobó.** `crm/index.html` no se puede abrir suelto —necesita
+`/api/crm`—, así que se probó contra una copia con `fetch` sustituido por datos
+de mentira, a 375×812 (iPhone), 768 (tablet) y escritorio: las cuatro pestañas,
+el hilo de chat, el de correo y la pantalla de acceso. Sin desbordes
+horizontales, sin scroll de página con un hilo abierto, y el escritorio igual
+que antes —dos columnas, Enter sigue enviando con teclado físico, que es lo que
+espera quien escribe rápido—.
 
 ## Puesta en marcha
 
@@ -313,20 +404,39 @@ cabecera `x-mb-secreto`.
 
 ### Cambiar el número de WhatsApp
 
-Hoy el número es el **de prueba de Meta** (`15556371888`): solo escribe a los 5
-destinatarios cargados a mano en la consola, el token que muestra esa consola
-dura 24 h, y no atiende público real. Cuando llegue el número propio, esto es
-**todo** lo que hay que tocar — está centralizado a propósito para que no haya
-que buscarlo:
+> [!info] Número propio: **+51 983 582 869** — dado de alta el 2026-08-23
+> Reemplaza al de prueba de Meta (`15556371888`), que solo escribía a los 5
+> destinatarios cargados a mano en la consola y no atendía público real.
+>
+> **Ya dado de alta** en la WABA `1045282521703032`, Phone Number ID
+> **`1261469877055727`**. `WHATSAPP_NEGOCIO` en [`index.html`](index.html) ya
+> apunta al número nuevo. Falta generar el token permanente de System User y
+> el `WHATSAPP_APP_SECRET` en el panel de Meta, cargar los tres valores en
+> Vercel, y apuntar el webhook.
+>
+> **No desplegar todavía**: hasta que el token y el App Secret estén puestos,
+> el bot no puede enviar ni validar nada, y el enlace `wa.me` de la landing
+> llevaría a un número que no contesta.
 
-| Dónde | Qué |
-|---|---|
-| Vercel · `WHATSAPP_PHONE_ID` | el *Phone Number ID* nuevo de Meta. **Redeployar después.** |
-| Vercel · `WHATSAPP_TOKEN` | token permanente de *System User*, no el de 24 h de la consola |
-| Vercel · `ASESOR_WHATSAPP` | solo si además cambia el teléfono del asesor |
-| [`index.html`](index.html) · `WHATSAPP_NEGOCIO` | el número del enlace `wa.me` que ve el cliente al registrarse |
-| [`index.html`](index.html) · `TELEFONO_VISIBLE` | el que se muestra en el pie (puede ser otro) |
-| Meta · webhook | volver a apuntar `https://mining-big.com/api/bot` al número nuevo y suscribir `messages` |
+Esto es **todo** lo que hay que tocar al cambiar de número — está centralizado
+a propósito para que no haya que buscarlo:
+
+| Dónde | Qué | Estado |
+|---|---|---|
+| Meta · alta del número | agregarlo a la WABA y verificarlo con el código que llega por SMS/llamada | ✅ hecho — WABA `1045282521703032` |
+| Vercel · `WHATSAPP_PHONE_ID` | el *Phone Number ID* nuevo de Meta. **Redeployar después.** | ✅ `1261469877055727` |
+| Vercel · `WHATSAPP_TOKEN` | token permanente de *System User*, no el de 24 h de la consola | ⬜ pendiente |
+| Vercel · `ASESOR_WHATSAPP` | solo si además cambia el teléfono del asesor | ✅ no cambia (`51934747464`) |
+| [`index.html`](index.html) · `WHATSAPP_NEGOCIO` | el número del enlace `wa.me` que ve el cliente al registrarse | ✅ `51983582869` |
+| [`index.html`](index.html) · `TELEFONO_VISIBLE` | el que se muestra en el pie (puede ser otro) | ✅ sigue el del asesor |
+| Meta · webhook | volver a apuntar `https://mining-big.com/api/bot` al número nuevo y suscribir `messages` | ⬜ pendiente |
+
+> [!warning] El número no puede estar activo en la app de WhatsApp
+> La Cloud API rechaza un número que ya tenga cuenta en WhatsApp o WhatsApp
+> Business. Si +51 983 582 869 la tiene, hay que **borrar esa cuenta desde la
+> app** (Ajustes → Cuenta → Eliminar mi cuenta) antes del alta, y eso se lleva
+> el historial de esa cuenta. Si la línea es nueva y sin usar, no hay nada que
+> hacer.
 
 El bot **no** lleva el número emisor escrito en ninguna parte: lo lee del
 `phone_number_id` que viene en cada mensaje entrante, así que responde siempre
@@ -344,18 +454,30 @@ conteste; y que el pie muestre el teléfono correcto.
 Marcarlas para Production, Preview y Development. **Hay que redeployar** después
 de agregarlas: las variables se inyectan en el build, no en caliente.
 
-> [!info] Estado al 2026-08-21
-> **Puestas:** `DATABASE_URL`, `CRM_CLAVE` (las dos marcadas *Sensitive*),
-> `WHATSAPP_VERIFY_TOKEN` y `CORREO_WEBHOOK_SECRET` (generadas al azar; se
-> pueden ver en el panel de Vercel).
-> **Faltan, y son de cuenta ajena:** `WHATSAPP_TOKEN` y `WHATSAPP_PHONE_ID`
-> (Meta), `WHATSAPP_APP_SECRET` (Meta), `CORREO_API_KEY` y `CORREO_REMITENTE`
-> (el proveedor de correo, sin contratar).
+> [!info] Estado al 2026-08-23 (fin de jornada)
+> **Puestas y desplegadas:** `DATABASE_URL`, `CRM_CLAVE`, `WHATSAPP_APP_SECRET`,
+> `WHATSAPP_PHONE_ID` (`1261469877055727`), `CORREO_WEBHOOK_SECRET` — todas
+> *Sensitive*, ninguna legible desde ningún panel una vez guardada.
 >
-> Ojo con `WHATSAPP_TOKEN` y `WHATSAPP_PHONE_ID`: **nunca estuvieron puestas**,
-> ni antes de este trabajo. O sea que el botón *escribir como asesor* del panel
-> no ha funcionado nunca en producción — respondía "WhatsApp no configurado en
-> el servidor", que al menos es honesto.
+> **`WHATSAPP_VERIFY_TOKEN` se regeneró este mismo día**: el usuario no
+> recordaba el valor original y, al estar marcada *Sensitive*, no había forma
+> de recuperarlo — ni `vercel env pull` lo expone (`[SENSITIVE]`). En vez de
+> perseguirlo, se generó uno nuevo (`openssl rand -hex 24`), se reemplazó en
+> Vercel (Production + Preview) y se verificó en vivo contra el dominio: token
+> correcto → 200 con el `hub.challenge`; incorrecto → 403. **Ese valor nuevo es
+> el que hay que cargar en Meta**, el viejo ya no sirve.
+>
+> **Falta, y es de cuenta ajena:** `WHATSAPP_TOKEN` — bloqueado, la WABA sigue
+> en "Revisión en curso" y no se puede generar el token permanente de System
+> User hasta que salga de ahí. También `CORREO_API_KEY` y `CORREO_REMITENTE`
+> (proveedor de correo, sin contratar).
+>
+> El botón *escribir como asesor* del panel sigue sin funcionar en producción
+> hasta que llegue `WHATSAPP_TOKEN` — responde "WhatsApp no configurado en el
+> servidor", que al menos es honesto.
+>
+> El número propio +51 983 582 869 está dado de alta en la WABA
+> `1045282521703032` desde el 2026-08-23. Ver *Cambiar el número de WhatsApp*.
 
 **La clave del CRM va en `CRM_CLAVE` y en ningún archivo.** En n8n estaba
 escrita dentro del workflow; acá el código no la contiene, así que el repo se
@@ -370,11 +492,26 @@ responde "WhatsApp no configurado en el servidor" en vez de fingir que salió.
 ### 3. Desplegar
 
 Este repo **no tiene remoto de git configurado** y los deploys se venían
-haciendo con la CLI. Con la CLI de Vercel instalada:
+haciendo con la CLI. Con la CLI de Vercel instalada, desde `landing-mining-big/`:
 
 ```bash
-vercel --prod
+vercel deploy --prod --yes
 ```
+
+> [!danger] Verificar que el deploy DE VERDAD llegó
+> El 2026-08-31 se descubrió que los deploys llevaban **8 días sin llegar**: la
+> CLI **v58.4.4** sobre **Node v24.18.1** revienta de forma intermitente
+> (`EPIPE`, `Assertion failed … src\win\async.c` de libuv) **antes de subir los
+> archivos**, y cuando pasa **no crea ningún registro de deployment** — parece
+> que el comando no hizo nada.
+>
+> - Antes de nada: `npm i -g vercel@latest` (v59+ maneja Node 24).
+> - El deploy tiene que terminar con `Production: https://…` + `● Ready`. Si no,
+>   reintentar (el crash es intermitente).
+> - Comprobar: `curl -sI https://mining-big.com/` → `age: 0`, y
+>   `vercel ls --scope max-2dfa` → el deploy de arriba con edad de segundos.
+> - El proyecto en Vercel se llama **`mining-big`** (scope `max-2dfa`), aunque
+>   `.vercel/project.json` todavía diga `landing-mining-big`.
 
 Si no hay Node en la máquina, la alternativa —y la más sana a largo plazo— es
 conectar el repo a GitHub y dejar que Vercel despliegue en cada push.
@@ -486,36 +623,44 @@ Y en los logs de la función, que **no** aparezca
 `bot: ATENCION — sin WHATSAPP_APP_SECRET`. Si aparece, la firma no se está
 comprobando.
 
-### 6. Conectar el correo
+### 6. Conectar el correo — hecho el 2026-09-02, dejado acá por si hay que rehacerlo
 
-1. Crear la cuenta en el proveedor y **verificar el dominio** `mining-big.com`
-   con los registros DNS que indique. Sin esto los correos rebotan o van a
-   spam, y no hay forma de saltárselo.
-2. Poner `CORREO_API_KEY`, `CORREO_REMITENTE` y `CORREO_WEBHOOK_SECRET` en
-   Vercel, y redeployar.
-3. En el panel, pestaña **Correos**: elegir un hilo, escribir asunto y cuerpo,
-   enviar. Debe llegar de verdad a la bandeja del destinatario — probar con una
-   dirección propia primero.
-4. Configurar la entrada del proveedor apuntando a
-   `https://mining-big.com/api/correo`, con la cabecera `x-mb-secreto` igual a
-   `CORREO_WEBHOOK_SECRET`. Responder a ese correo desde la bandeja del
-   destinatario y comprobar que la respuesta **aparece en el hilo del panel**.
-5. Si no aparece, mirar el log de la función: si dice
-   `correo: no reconozco el formato del webhook. Claves recibidas: [...]`,
-   ahí está la lista de campos que manda el proveedor. Ajustar `interpretar()`
-   en `api/correo.js` con esos nombres.
+1. En Resend, **Add Domain** → `mining-big.com` (el dominio raíz — el envío se
+   verifica ahí; no rompe nada porque Resend usa un subdominio propio,
+   `send.mining-big.com`, para el bounce/SPF, y otro, `resend._domainkey`,
+   para el DKIM). `CORREO_API_KEY` y `CORREO_REMITENTE` ya están en Vercel.
+2. **Para recibir hace falta un segundo dominio, aparte.** Resend solo deja
+   activar "Enable Receiving" apuntando el **MX del `@` del dominio que
+   verificaste** — si ese dominio es la raíz, pide reemplazar el MX de
+   Microsoft 365 (Resend mismo avisa: *"Routing emails to Resend will disable
+   old MX records. Use a subdomain to avoid issues."*). Se agregó
+   `responde.mining-big.com` como dominio **separado** en Resend, se verificó
+   con sus propios DKIM/SPF, y ahí sí se activó "Enable Receiving" — su MX no
+   compite con nada.
+3. `CORREO_RESPONDER_A` = `respuestas@responde.mining-big.com`, cargada en
+   Vercel, para que las respuestas vayan al dominio que puede recibirlas sin
+   que el cliente vea la diferencia.
+4. En Resend, **Webhooks** → **Add Endpoint** → `https://mining-big.com/api/correo`,
+   evento `email.received`. El *signing secret* (`whsec_...`) que entrega va en
+   `CORREO_WEBHOOK_SECRET`.
+5. **La clave necesita permiso "Full access" en Resend**, no el "Sending
+   access" que se elige por defecto — traer el cuerpo de un correo recibido es
+   una lectura, y con permiso solo de envío la API de recepción devuelve 401.
+   Se cambia en API Keys → la clave → el nivel, sin generar una nueva.
+6. Probar de punta a punta: enviar desde el panel a una dirección propia,
+   responder ese correo, y confirmar que la respuesta aparece en el hilo **con
+   el texto**, no solo el asunto — el webhook de Resend no manda el cuerpo, así
+   que si aparece vacío es la trampa de arriba (*firma verificada, payload
+   confirmado*), no un problema de conexión.
 
 ## Pendiente
 
-- **La entrada de correo no está verificada contra un proveedor real.** El
-  endpoint, la firma y el guardado están hechos y probados, pero **la forma
-  exacta del payload** de `POST /api/correo` se dedujo de las formas más
-  comunes: no hay cuenta con la que comprobarla. Cuando llegue el primer correo
-  real, si no lo reconoce, el log escribe **las claves que recibió** y ajustarlo
-  es editar `interpretar()` en `api/correo.js`.
-- **El proveedor de correo está por decidir y por contratar.** Está
-  implementado Resend porque habla HTTP (cero dependencias nuevas) y verifica
-  dominio propio, pero es una decisión con costo: ver *Correo* más arriba.
+- ~~**La entrada de correo no está verificada contra un proveedor real.**~~
+  **Resuelto el 2026-09-02.** Firma Svix, formato del payload y la llamada a
+  la API de recepción de Resend, todo confirmado contra correos reales
+  enviados y recibidos de punta a punta. Detalle de los tres tropiezos reales
+  —dominio raíz vs. subdominio para recibir, el webhook sin cuerpo, el permiso
+  de la API key— en *Correo* más arriba y en [[crm-mining-big]].
 - **El bot está sin desplegar y sin conectar a Meta.** El código está y está
   probado, pero no ha visto un mensaje real. Hasta el paso 5 de *Puesta en
   marcha*, dos de las tres pestañas del CRM siguen vacías y nadie contesta a

@@ -8,6 +8,10 @@
 <meta name="theme-color" content="#E8E5DE" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101316" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" sizes="48x48" href="/img/favicon-48.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
 <style>
   :root {
     --fondo:      #E8E5DE;
@@ -25,6 +29,10 @@
                "Franklin Gothic Medium", "Liberation Sans Narrow", Impact, sans-serif;
     --texto:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --dato:    "SF Mono", "Consolas", "Roboto Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+    /* Alto real de `.barra` (encabezado + pestanas). El valor de aca es solo
+       el arranque: lo mide el JS y lo reescribe, porque depende del texto y
+       en un telefono no mide lo mismo que en un escritorio. */
+    --barras: 96px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -39,16 +47,32 @@
     margin: 0; background: var(--fondo); color: var(--tinta);
     font-family: var(--texto); font-size: 15px; line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    /* Sin esto, arrastrar la lista de mensajes hasta el tope arrastra tambien
+       la pagina y el navegador dispara su recarga por tiron. */
+    overscroll-behavior-y: none;
   }
   :focus-visible { outline: 2px solid var(--oxido); outline-offset: 2px; }
-  button { font: inherit; cursor: pointer; }
+  /* `touch-action` mata el retardo de 300 ms que el navegador se toma por si
+     el toque fuera un doble toque para hacer zoom. En un panel que se usa a
+     una mano, ese retardo es la diferencia entre "responde" y "se colgo". */
+  button, .btn-sec, .item-chat, .palanca, label { touch-action: manipulation; }
+  button { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:active, .item-chat:active { filter: brightness(.94); }
 
-  /* ── Encabezado ── */
+  /* ── Encabezado ──
+     El encabezado y las pestanas viajan juntos dentro de `.barra`. Antes cada
+     uno se pegaba por su cuenta y el de las pestanas llevaba `top: 47px`
+     escrito a mano: esa cifra solo es cierta en escritorio, y en un telefono
+     —donde el encabezado mide otra cosa— las pestanas se montaban encima del
+     titulo o dejaban una franja de fondo colgando. */
+  .barra {
+    position: sticky; top: 0; z-index: 20; background: var(--panel);
+    padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+  }
   header {
     display: flex; align-items: center; gap: 14px;
     padding: 10px clamp(14px, 3vw, 24px);
     background: var(--panel); border-bottom: 2px solid var(--linea);
-    position: sticky; top: 0; z-index: 20;
   }
   .marca { font-family: var(--display); font-size: 20px; letter-spacing: .06em; text-transform: uppercase; }
   .marca b { color: var(--oxido); }
@@ -56,20 +80,42 @@
     font-family: var(--dato); font-size: 11px; color: var(--acero);
     border: 1px solid var(--linea); padding: 1px 7px; border-radius: 3px;
   }
-  .estado-red { margin-left: auto; font-family: var(--dato); font-size: 11px; color: var(--acero); }
+  /* Se recorta en vez de empujar: 'actualizado 12:04' es lo primero que sobra
+     cuando el ancho no alcanza, y empujando sacaba el boton Salir de pantalla. */
+  .estado-red {
+    margin-left: auto; font-family: var(--dato); font-size: 11px; color: var(--acero);
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right;
+  }
   .estado-red.err { color: var(--oxido); }
+  #boton-salir { margin-left: 12px; flex: 0 0 auto; }
 
   /* ── Pestañas ── */
+  /* Cuatro pestanas con badge no entran en 360 px. Que rueden de costado es
+     preferible a encogerlas hasta que 'Solicitudes' se lea partido. */
   nav {
     display: flex; gap: 4px; padding: 0 clamp(14px, 3vw, 24px);
     background: var(--panel); border-bottom: 1px solid var(--linea);
-    position: sticky; top: 47px; z-index: 19;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
   }
+  nav::-webkit-scrollbar { display: none; }
+  /* Las cuatro pestanas no entran en 360 px con ninguna fuente honesta, y
+     encogerlas hasta que entren las deja en 12 px. Ruedan de costado, entonces,
+     pero con un desvanecido en el borde que aparece solo cuando queda algo por
+     ver: sin el, 'Alertas' —justo la que puede estar reclamando atencion— se
+     corta como si no existiera. */
+  .zona-pestanas { position: relative; }
+  .zona-pestanas::after {
+    content: ""; position: absolute; top: 0; right: 0; bottom: 1px; width: 36px;
+    pointer-events: none; opacity: 0; transition: opacity .15s;
+    background: linear-gradient(to right, transparent, var(--panel) 80%);
+  }
+  .zona-pestanas.hay-mas::after { opacity: 1; }
   nav button {
     background: none; border: none; border-bottom: 3px solid transparent;
     padding: 10px 14px 8px; color: var(--acero);
     font-family: var(--display); font-size: 15px; letter-spacing: .05em; text-transform: uppercase;
     display: flex; align-items: center; gap: 7px;
+    flex: 0 0 auto; white-space: nowrap;
   }
   nav button.activa { color: var(--tinta); border-bottom-color: var(--oxido); }
   .badge {
@@ -79,7 +125,47 @@
   }
   .badge.visible { display: inline-flex; }
 
-  main { padding: clamp(14px, 3vw, 24px); max-width: 1180px; margin: 0 auto; }
+  .pestana-icono { width: 17px; height: 17px; flex: none; --hueco: var(--panel); }
+
+  @keyframes crm-tipear {
+    0%, 60%, 100% { transform: translateY(0); opacity: .55; }
+    30%           { transform: translateY(-2px); opacity: 1; }
+  }
+  @keyframes crm-repicar {
+    0%, 100% { transform: rotate(-8deg); }
+    50%      { transform: rotate(8deg); }
+  }
+
+  /* Cada pestaña gesticula lo suyo al pasar el cursor (o al tocar, en
+     celular: ver ".tocada" en el script): a Solicitudes le cae una hoja en
+     la bandeja, Chats tipea, Correos deja ver la carta, Alertas repica. */
+  @media (prefers-reduced-motion: no-preference) {
+    nav button:hover .pestana-icono,
+    nav button.tocada .pestana-icono {
+      --sol-papel: 9;
+      --chat-tipear: running;
+      --correo-carta: 1;
+      --alerta-repicar: running;
+    }
+  }
+
+  /* Con las 4 pestañas ya peleando por espacio en 360px (ver el comentario
+     de arriba sobre ".zona-pestanas"), el ícono se sacrifica antes que el
+     texto: el gesto de hover no aplica igual en touch, así que perderlo acá
+     no cuesta nada. */
+  @media (max-width: 380px) {
+    .pestana-icono { display: none; }
+  }
+
+  /* `viewport-fit=cover` mete la pagina bajo el notch y bajo la barra de
+     inicio; sin `env()` el contenido queda debajo de ellos en horizontal. */
+  main {
+    padding: clamp(14px, 3vw, 24px);
+    padding-left: max(clamp(14px, 3vw, 24px), env(safe-area-inset-left));
+    padding-right: max(clamp(14px, 3vw, 24px), env(safe-area-inset-right));
+    padding-bottom: calc(clamp(14px, 3vw, 24px) + env(safe-area-inset-bottom));
+    max-width: 1180px; margin: 0 auto;
+  }
   .oculto { display: none !important; }
   .vacio { color: var(--acero); font-family: var(--dato); font-size: 13px; padding: 30px 0; text-align: center; }
 
@@ -172,7 +258,10 @@
   .palanca.si { background: var(--ok); border-color: var(--ok); }
   .palanca.si::after { left: 20px; background: #fff; }
 
-  .mensajes { flex: 1; overflow-y: auto; padding: 14px; max-height: 56vh; min-height: 260px; }
+  .mensajes {
+    flex: 1; overflow-y: auto; padding: 14px; max-height: 56vh; min-height: 260px;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  }
   .burbuja {
     max-width: 78%; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px;
     font-size: 14px; white-space: pre-wrap; word-break: break-word;
@@ -236,9 +325,153 @@
     border-radius: 6px; padding: 8px 12px; margin-bottom: 12px;
     font-size: 13px; color: var(--oxido);
   }
+
+  /* ══════════════ Pantallas tactiles ══════════════
+     No es lo mismo "pantalla angosta" que "pantalla tactil": una tablet en
+     horizontal es ancha y se toca igual, y en ella el problema no es el ancho
+     sino el tamano del blanco al que hay que apuntar. Por eso van en dos
+     bloques distintos —`pointer: coarse` y `max-width`— y no en uno solo. */
+  @media (pointer: coarse) {
+    /* 29 px de alto se fallan con el dedo. 44 es el minimo de Apple y el que
+       usa la guia de Google (48 dp) redondeando por abajo. */
+    .btn-sec {
+      min-height: 44px; padding: 10px 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    nav button { min-height: 46px; }
+    .item-chat { padding: 13px 14px; min-height: 58px; }
+    .volver { min-width: 44px; justify-content: center; }
+    .check-atendido { min-height: 44px; }
+    .check-atendido input { width: 20px; height: 20px; }
+    .palanca { width: 46px; height: 28px; border-radius: 14px; }
+    .palanca::after { width: 22px; height: 22px; }
+    .palanca.si::after { left: 22px; }
+
+    /* Con menos de 16 px, Safari hace zoom al enfocar el campo — y no lo
+       deshace al salir: el panel se queda corrido a la derecha el resto de la
+       sesion. Van por id/clase porque `input` a secas pierde contra
+       `.acceso input`, que ya fijaba 14 px. */
+    .acceso input, #campo-mensaje, #campo-asunto, #campo-correo { font-size: 16px; }
+    #campo-mensaje { min-height: 46px; }
+  }
+
+  /* ══════════════ Telefonos ══════════════
+     El panel se lee desde el celular tanto como desde el escritorio: el asesor
+     contesta el WhatsApp de un cliente parado en la obra, no sentado. */
+  @media (max-width: 760px) {
+    header { gap: 8px; padding: 8px 12px; }
+    .marca { font-size: 17px; }
+    /* La etiqueta 'CRM' repite lo que ya dice el titulo de la pestana y le
+       roba ancho al estado de la conexion, que si es informacion. */
+    .tag { display: none; }
+    .estado-red { font-size: 10px; max-width: 45%; }
+    #boton-salir { margin-left: 8px; padding: 8px 11px; }
+
+    nav { padding: 0 6px; gap: 0; }
+    nav button { padding: 11px 11px 9px; font-size: 14px; gap: 5px; }
+
+    main { padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+
+    /* Chats y correos, con un hilo abierto, ocupan exactamente lo que queda de
+       pantalla bajo la barra. Antes la lista de mensajes estaba topada en
+       `56vh` y la caja de escribir caia a media pantalla: para llegar al boton
+       de Enviar habia que hacer scroll de la pagina entera, y al hacerlo se
+       perdia de vista el mensaje que se estaba contestando.
+       `dvh` es el alto real con la barra del navegador retraida; la linea de
+       `vh` queda debajo como respaldo para los que no lo entienden. */
+    .chats { gap: 10px; min-height: 0; }
+    .chats.viendo { height: calc(100vh - var(--barras) - 24px); }
+    .chats.viendo { height: calc(100dvh - var(--barras) - 24px); }
+    .chats.viendo .panel-chat { height: 100%; min-height: 0; }
+    .chats.viendo .mensajes { max-height: none; min-height: 0; flex: 1 1 auto; }
+
+    .chat-cab { padding: 8px 10px; gap: 8px; }
+    /* Un correo largo empujaba el interruptor del bot fuera de la fila. */
+    #chat-telefono, #correo-email {
+      flex: 1 1 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .interruptor { font-size: 11px; gap: 6px; }
+    /* El encabezado del hilo caia en tres filas —numero, etiquetas, y el
+       interruptor del bot solo en la tercera—: 40 px menos de mensajes por una
+       fila que no dice nada. Empujando las etiquetas a su propia linea, el
+       interruptor sube al lado del numero, que es donde se lo busca. */
+    .chat-cab #chat-etiquetas, .chat-cab #correo-etiquetas { order: 3; flex-basis: 100%; }
+    .chat-cab .interruptor { order: 2; }
+    .burbuja { max-width: 88%; }
+    .burbuja.correo { max-width: 95%; }
+    .redactar { padding: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+    .redactar button { padding: 0 14px; }
+    .redactar-correo textarea { height: 76px; }
+
+    /* Solicitudes: una columna, la fecha en su propia linea y los botones
+       repartiendose el ancho en vez de amontonarse de a dos por fila. */
+    .solicitud { padding: 12px; }
+    .sol-cab { gap: 8px; }
+    .sol-fecha { margin-left: 0; width: 100%; order: 9; }
+    .sol-datos { grid-template-columns: 1fr; gap: 3px; }
+    .sol-acciones { gap: 8px; }
+    .sol-acciones .btn-sec { flex: 1 1 auto; }
+    .check-atendido { width: 100%; }
+
+    .alerta { padding: 12px; }
+    .alerta .motivo { width: 100%; }
+    .alerta .cuando { margin-left: 0; }
+    .alerta .btn-sec { flex: 1 1 auto; }
+
+    /* El aviso vivia abajo y al centro: en el telefono tapaba justo el boton
+       de Enviar, que es lo que uno quiere volver a pulsar despues de leerlo. */
+    .aviso-global {
+      top: calc(var(--barras) + 8px); bottom: auto;
+      left: 12px; right: 12px; transform: none; max-width: none;
+    }
+
+    .acceso { margin-top: 8vh; padding: 20px; }
+  }
 </style>
 </head>
 <body>
+
+<!-- Iconos de las 4 pestañas, mismo lenguaje que los pictogramas de la
+     landing: currentColor + agujeros "--hueco", y un gesto propio por
+     ícono al pasar el cursor (ver CSS ".pestana-icono" y sus @keyframes). -->
+<svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0">
+  <defs>
+    <g id="ic-solicitudes">
+      <!-- bandeja -->
+      <path d="M3 15 L7.2 15 L9 17.6 L15 17.6 L16.8 15 L21 15 L21 20.3 Q21 21 20.3 21 L3.7 21 Q3 21 3 20.3 Z" fill="currentColor"/>
+      <!-- hoja: cae dentro de la bandeja al pasar el cursor (llega una solicitud) -->
+      <g style="transform-origin:12px 4px; transform:translateY(calc(var(--sol-papel,0) * 1px)); transition:transform .4s cubic-bezier(.34,1.15,.4,1);">
+        <rect x="8.6" y="3" width="6.8" height="8.4" rx="1" fill="currentColor"/>
+        <path d="M9.8 5.6 L13.2 5.6 M9.8 7.6 L13.2 7.6" stroke="var(--hueco)" stroke-width="1" stroke-linecap="round"/>
+      </g>
+    </g>
+
+    <g id="ic-chats">
+      <path d="M4 5 Q4 3.4 5.6 3.4 L18.4 3.4 Q20 3.4 20 5 L20 13.6 Q20 15.2 18.4 15.2 L9.6 15.2 L6 18.6 L6 15.2 L5.6 15.2 Q4 15.2 4 13.6 Z" fill="currentColor"/>
+      <!-- puntos suspensivos: "escribiendo…" en bucle mientras se mantiene el cursor -->
+      <circle cx="9" cy="9.3" r="1.15" fill="var(--hueco)" style="animation:crm-tipear 1s ease-in-out infinite; animation-delay:0s; animation-play-state:var(--chat-tipear,paused);"/>
+      <circle cx="12" cy="9.3" r="1.15" fill="var(--hueco)" style="animation:crm-tipear 1s ease-in-out infinite; animation-delay:.15s; animation-play-state:var(--chat-tipear,paused);"/>
+      <circle cx="15" cy="9.3" r="1.15" fill="var(--hueco)" style="animation:crm-tipear 1s ease-in-out infinite; animation-delay:.3s; animation-play-state:var(--chat-tipear,paused);"/>
+    </g>
+
+    <g id="ic-correos">
+      <rect x="3" y="5.5" width="18" height="13" rx="1.6" fill="currentColor"/>
+      <path d="M3.6 6.3 L12 12.6 L20.4 6.3" stroke="var(--hueco)" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- carta: asoma y sube al pasar el cursor (correo listo para leer) -->
+      <rect x="9.6" y="9.5" width="4.8" height="3.4" rx=".6" fill="var(--hueco)"
+        style="opacity:var(--correo-carta,0); transform:translateY(calc(3px - var(--correo-carta,0) * 5px)); transition:opacity .35s ease, transform .35s cubic-bezier(.22,1,.36,1);"/>
+    </g>
+
+    <g id="ic-alertas">
+      <!-- campana: repica en bucle mientras se mantiene el cursor -->
+      <g style="transform-origin:12px 4px; animation:crm-repicar .5s ease-in-out infinite; animation-play-state:var(--alerta-repicar,paused);">
+        <path d="M12 3.4 Q16.4 3.4 16.4 8.4 L16.4 12.6 L18 15.4 L6 15.4 L7.6 12.6 L7.6 8.4 Q7.6 3.4 12 3.4 Z" fill="currentColor"/>
+      </g>
+      <circle cx="12" cy="18" r="1.7" fill="currentColor"/>
+    </g>
+  </defs>
+</svg>
 
 <div id="pantalla-acceso" class="acceso">
   <h1>Mining <b style="color:var(--oxido)">Big</b> · CRM</h1>
@@ -250,18 +483,22 @@
 </div>
 
 <div id="app" class="oculto">
+  <div class="barra">
   <header>
     <span class="marca">MINING <b>BIG</b></span>
     <span class="tag">CRM</span>
     <span class="estado-red" id="estado-red" role="status" aria-live="polite">—</span>
-    <button class="btn-sec" id="boton-salir" style="margin-left:12px">Salir</button>
+    <button class="btn-sec" id="boton-salir">Salir</button>
   </header>
+  <div class="zona-pestanas">
   <nav>
-    <button data-tab="solicitudes" class="activa">Solicitudes <span class="badge" id="badge-solicitudes"></span></button>
-    <button data-tab="chats">Chats <span class="badge" id="badge-chats"></span></button>
-    <button data-tab="correos">Correos <span class="badge" id="badge-correos"></span></button>
-    <button data-tab="alertas">Alertas <span class="badge" id="badge-alertas"></span></button>
+    <button data-tab="solicitudes" class="activa"><svg class="pestana-icono" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-solicitudes"/></svg>Solicitudes <span class="badge" id="badge-solicitudes"></span></button>
+    <button data-tab="chats"><svg class="pestana-icono" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-chats"/></svg>Chats <span class="badge" id="badge-chats"></span></button>
+    <button data-tab="correos"><svg class="pestana-icono" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-correos"/></svg>Correos <span class="badge" id="badge-correos"></span></button>
+    <button data-tab="alertas"><svg class="pestana-icono" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-alertas"/></svg>Alertas <span class="badge" id="badge-alertas"></span></button>
   </nav>
+  </div>
+  </div>
   <main>
     <section id="tab-solicitudes">
       <div class="filtros">
@@ -374,6 +611,78 @@
   var pendientes = { atendido: {}, bot: {}, alertas: {} };
 
   function $(id) { return document.getElementById(id); }
+
+  // ── Pantalla ──
+  // El CSS necesita saber cuanto mide la barra pegajosa para que el panel de
+  // chat ocupe justo lo que queda. No se puede escribir a mano: depende del
+  // texto, de la fuente que el sistema termine usando y de si las pestanas
+  // caben en una linea.
+  function medirBarra() {
+    var barra = document.querySelector('.barra');
+    if (!barra || !barra.offsetHeight) return;
+    document.documentElement.style.setProperty('--barras', barra.offsetHeight + 'px');
+  }
+  function esMovil() {
+    return window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+  }
+  function esTactil() {
+    return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  }
+  // El desvanecido del borde solo tiene sentido mientras quede algo a la
+  // derecha: si se deja fijo, al final del scroll parece que hay mas y no hay.
+  function marcarPestanasDesbordadas() {
+    var nav = document.querySelector('nav');
+    var zona = document.querySelector('.zona-pestanas');
+    if (!nav || !zona) return;
+    var queda = nav.scrollWidth - nav.clientWidth - nav.scrollLeft;
+    zona.classList.toggle('hay-mas', queda > 12);
+  }
+
+  // Las dos medidas van siempre juntas, y al arrancar se repiten: en la primera
+  // pasada el navegador puede no haber resuelto todavia la fuente condensada
+  // del titulo y las pestanas, y con la de respaldo las medidas salen cortas
+  // —asi el desvanecido del borde no aparecia nunca en el primer pintado.
+  function medir() {
+    medirBarra();
+    marcarPestanasDesbordadas();
+    ajustarAltoHilo();
+  }
+  function medirCuandoAsiente() {
+    medir();
+    if (window.requestAnimationFrame) requestAnimationFrame(medir);
+    setTimeout(medir, 300);
+    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+      document.fonts.ready.then(medir).catch(function () { });
+    }
+  }
+
+  window.addEventListener('resize', medir);
+  window.addEventListener('orientationchange', function () { setTimeout(medir, 250); });
+
+  // El alto del hilo abierto no se puede dejar escrito en el CSS: arriba puede
+  // haber —o no— el aviso de recorte del historial, y el encabezado mide
+  // distinto segun cuantas etiquetas traiga la conversacion. La regla de CSS
+  // deja una aproximacion para el primer pintado; esto la corrige contra la
+  // ventana real, que es lo unico que garantiza que el boton de Enviar quede
+  // dentro de la pantalla sin hacer scroll de la pagina.
+  function ajustarAltoHilo() {
+    ['zona-chats', 'zona-correos'].forEach(function (id) {
+      var z = $(id);
+      if (!z) return;
+      if (!esMovil() || !z.classList.contains('viendo')) { z.style.height = ''; return; }
+      var arriba = z.getBoundingClientRect().top;
+      z.style.height = Math.max(280, Math.round(window.innerHeight - arriba - 14)) + 'px';
+    });
+  }
+
+  // El campo de escribir media 44 px fijos: un mensaje de cuatro lineas se
+  // redactaba viendo solo la ultima, que en un telefono es la mitad de un
+  // parrafo. Crece con el texto hasta un tope y ahi empieza a hacer scroll.
+  function crecer(campo, maximo) {
+    if (!campo) return;
+    campo.style.height = 'auto';
+    campo.style.height = Math.min(campo.scrollHeight, maximo) + 'px';
+  }
 
   function api(cuerpo) {
     cuerpo.clave = clave;
@@ -592,6 +901,10 @@
     actualizarTitulo();
     $('aviso-recorte').classList.toggle('oculto', datos.mensajes_recortados !== true);
     $('aviso-recorte-correos').classList.toggle('oculto', datos.correos_recortados !== true);
+    // Los avisos de recorte aparecen y desaparecen con el sondeo, y el
+    // encabezado del hilo cambia de alto con las etiquetas: el hilo se vuelve
+    // a medir despues de pintar, no antes.
+    ajustarAltoHilo();
   }
 
   // ── Solicitudes ──
@@ -751,6 +1064,11 @@
     $('zona-chats').classList.add('viendo');
     pintarListaChats();
     pintarChat(chatAbierto, false);
+    // En el telefono la lista y el hilo son dos pantallas, no dos columnas: si
+    // se venia con scroll a mitad de la lista, el hilo se abria empezado por
+    // la mitad y parecia que faltaban mensajes. El scroll va ANTES de medir:
+    // el alto se calcula desde donde arranca el panel en la ventana.
+    if (esMovil()) { window.scrollTo(0, 0); ajustarAltoHilo(); pintarChat(chatAbierto, false); }
   }
 
   function pintarChat(tel, conservarScroll) {
@@ -837,6 +1155,7 @@
       var aviso = $('aviso-envio');
       if (j && j.ok) {
         campo.value = '';
+        crecer(campo, 140);
         aviso.style.display = 'none';
         if (j.aviso) avisar(j.aviso, true);
         datos.mensajes.push({ id: 1e9 + datos.mensajes.length, telefono: telefono, direccion: 'out', texto: texto, autor: 'asesor', createdAt: new Date().toISOString() });
@@ -944,6 +1263,7 @@
     $('zona-correos').classList.add('viendo');
     pintarListaCorreos();
     pintarHiloCorreo(correoAbierto, false);
+    if (esMovil()) { window.scrollTo(0, 0); ajustarAltoHilo(); pintarHiloCorreo(correoAbierto, false); }
   }
 
   function pintarHiloCorreo(email, conservarScroll) {
@@ -1009,6 +1329,7 @@
       boton.disabled = false;
       if (j && j.ok) {
         campo.value = '';
+        crecer(campo, 240);
         campoAsunto.value = '';
         aviso.style.display = 'none';
         if (j.aviso) avisar(j.aviso, true);
@@ -1087,6 +1408,18 @@
     document.querySelectorAll('nav button').forEach(function (b) {
       b.classList.toggle('activa', b.getAttribute('data-tab') === nombre);
     });
+    // Cambiar de pestana con la pagina a mitad de scroll dejaba la nueva
+    // empezada por el medio, que es como no haber cambiado.
+    if (esMovil()) window.scrollTo(0, 0);
+    // Si se llego aca desde un boton ('Ver chat' de una alerta, por ejemplo),
+    // la pestana recien activada puede estar fuera de la parte visible de la
+    // fila: se la trae, o el asesor no ve donde quedo parado. Va DESPUES de
+    // marcarla activa, o se trae a la vista la que se acaba de dejar.
+    var activa = document.querySelector('nav button.activa');
+    if (activa && activa.scrollIntoView) {
+      try { activa.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { }
+    }
+    marcarPestanasDesbordadas();
   }
 
   function esperandoAcceso(si) {
@@ -1159,6 +1492,8 @@
     $('campo-correo').value = '';
     $('campo-asunto').value = '';
     $('campo-mensaje').value = '';
+    crecer($('campo-mensaje'), 140);
+    crecer($('campo-correo'), 240);
     $('error-acceso').textContent = motivo || 'Clave incorrecta.';
     $('error-acceso').style.display = motivo ? 'block' : 'none';
     $('app').classList.add('oculto');
@@ -1169,10 +1504,21 @@
   function arrancarApp() {
     $('pantalla-acceso').classList.add('oculto');
     $('app').classList.remove('oculto');
+    // Se mide con el panel ya visible: en un elemento oculto, offsetHeight es 0.
+    medirCuandoAsiente();
     pintarTodo();
     avisarAlertasNuevas();
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    // Safari lanza si el permiso no se pide desde un gesto del usuario, y en
+    // iOS `Notification` ni siquiera existe fuera de una app instalada en la
+    // pantalla de inicio. Sin este try, la excepcion se llevaba por delante
+    // `arrancarSondeo()` —la linea de abajo— y el panel se quedaba sin sondear
+    // para siempre: datos congelados, ninguna pista de por que.
+    try {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    } catch (e) {
+      console.warn('CRM: no se pudo pedir permiso de notificaciones', e);
     }
     arrancarSondeo();
   }
@@ -1183,6 +1529,22 @@
   document.querySelectorAll('nav button').forEach(function (b) {
     b.addEventListener('click', function () { mostrarTab(b.getAttribute('data-tab')); });
   });
+  document.querySelector('nav').addEventListener('scroll', marcarPestanasDesbordadas, { passive: true });
+
+  // Gesto del ícono al tocar la pestaña en pantallas táctiles: el CSS ya lo
+  // hace con :hover, pero eso no dispara en touch (y en celular el ícono ni
+  // siquiera se muestra bajo 380px, así que esto solo importa en tablets).
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      window.matchMedia('(hover: none)').matches) {
+    var botonesPestana = document.querySelectorAll('nav button');
+    botonesPestana.forEach(function (b) {
+      b.addEventListener('pointerdown', function () {
+        botonesPestana.forEach(function (otro) { if (otro !== b) otro.classList.remove('tocada'); });
+        b.classList.add('tocada');
+        setTimeout(function () { b.classList.remove('tocada'); }, 900);
+      });
+    });
+  }
   document.querySelectorAll('.filtros button').forEach(function (b) {
     b.addEventListener('click', function () {
       filtroSolicitudes = b.getAttribute('data-filtro');
@@ -1193,13 +1555,20 @@
   $('palanca-bot').addEventListener('click', alternarBot);
   $('palanca-bot').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternarBot(); } });
   $('boton-enviar').addEventListener('click', enviarMensaje);
+  $('campo-mensaje').addEventListener('input', function () { crecer(this, 140); });
+  $('campo-correo').addEventListener('input', function () { crecer(this, 240); });
   $('campo-mensaje').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); }
+    // Con teclado tactil, Enter es el salto de linea: mandar ahi haria
+    // imposible escribir dos parrafos, y el boton de Enviar esta al lado. Con
+    // teclado fisico Enter sigue mandando, que es lo que espera quien escribe
+    // rapido desde el escritorio.
+    if (e.key === 'Enter' && !e.shiftKey && !esTactil()) { e.preventDefault(); enviarMensaje(); }
   });
   $('boton-volver').addEventListener('click', function () {
     $('zona-chats').classList.remove('viendo');
     chatAbierto = null;
     pintarListaChats();
+    ajustarAltoHilo(); // suelta el alto fijo: la lista crece con lo que tenga
   });
   $('boton-enviar-correo').addEventListener('click', enviarCorreoPanel);
   // A diferencia del chat, acá Enter NO manda: un correo lleva párrafos, y
@@ -1209,6 +1578,7 @@
     correoAbierto = null;
     $('campo-asunto').value = '';
     pintarListaCorreos();
+    ajustarAltoHilo();
   });
   $('boton-salir').addEventListener('click', function () { salir(); });
   $('aviso-global').addEventListener('click', function () { this.classList.add('oculto'); });

@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Política de Privacidad — Mining Big</title>
+<meta name="description" content="Cómo Mining Big (M & B Minería, Construcción y Multiservicios S.A.C.) trata los datos personales que recibe por su formulario de registro y por WhatsApp.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#E8E5DE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101316" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" sizes="48x48" href="/img/favicon-48.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+
+<style>
+  :root {
+    --fondo:      #E8E5DE;
+    --panel:      #F3F1EC;
+    --panel-alt:  #DEDAD1;
+    --tinta:      #16191C;
+    --acero:      #5C666E;
+    --linea:      rgba(22, 25, 28, .18);
+    --linea-suave:rgba(22, 25, 28, .09);
+    --oxido:      #B24A16;
+    --senal:      #D8A21A;
+
+    --display: "Arial Narrow", "Helvetica Neue Condensed", "HelveticaNeue-CondensedBold",
+               "Franklin Gothic Medium", "Liberation Sans Narrow", Impact, sans-serif;
+    --texto:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --dato:    "SF Mono", "Consolas", "Roboto Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+
+    --ancho: 760px;
+    --margen: clamp(18px, 4vw, 24px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo:      #101316;
+      --panel:      #171B1F;
+      --panel-alt:  #1E2429;
+      --tinta:      #E7E4DD;
+      --acero:      #8D979F;
+      --linea:      rgba(231, 228, 221, .17);
+      --linea-suave:rgba(231, 228, 221, .08);
+      --oxido:      #E4713A;
+      --senal:      #E8B93A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --fondo:      #101316;
+    --panel:      #171B1F;
+    --panel-alt:  #1E2429;
+    --tinta:      #E7E4DD;
+    --acero:      #8D979F;
+    --linea:      rgba(231, 228, 221, .17);
+    --linea-suave:rgba(231, 228, 221, .08);
+    --oxido:      #E4713A;
+    --senal:      #E8B93A;
+  }
+
+  :root[data-theme="light"] {
+    --fondo:      #E8E5DE;
+    --panel:      #F3F1EC;
+    --panel-alt:  #DEDAD1;
+    --tinta:      #16191C;
+    --acero:      #5C666E;
+    --linea:      rgba(22, 25, 28, .18);
+    --linea-suave:rgba(22, 25, 28, .09);
+    --oxido:      #B24A16;
+    --senal:      #D8A21A;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: var(--texto);
+    font-size: 16px;
+    line-height: 1.65;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--oxido); text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+
+  :focus-visible { outline: 2px solid var(--oxido); outline-offset: 3px; }
+
+  .franja {
+    height: 7px;
+    background-image: repeating-linear-gradient(-45deg, var(--senal) 0 10px, transparent 10px 20px);
+    background-color: var(--tinta);
+  }
+
+  .envoltura {
+    width: 100%;
+    max-width: var(--ancho);
+    margin-inline: auto;
+    padding-inline: var(--margen);
+  }
+
+  .cabecera {
+    border-bottom: 1px solid var(--linea);
+    background: color-mix(in srgb, var(--fondo) 92%, transparent);
+  }
+
+  .cabecera-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 60px;
+  }
+
+  .marca {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .marca-nombre {
+    font-family: var(--display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: clamp(20px, 5vw, 24px);
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+
+  .marca-nombre em { font-style: normal; color: var(--oxido); }
+
+  .volver {
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--acero);
+  }
+  .volver:hover { color: var(--oxido); }
+
+  main { padding-block: clamp(36px, 7vw, 64px); }
+
+  .etiqueta {
+    font-family: var(--dato);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--acero);
+    margin: 0 0 12px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -.01em;
+    line-height: 1;
+    font-size: clamp(34px, 8vw, 60px);
+    margin: 0 0 14px;
+  }
+
+  .intro {
+    color: var(--acero);
+    font-size: clamp(15px, 3.6vw, 17px);
+    margin: 0 0 8px;
+  }
+
+  .actualizado {
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: var(--acero);
+    margin: 0 0 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--linea);
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .01em;
+    line-height: 1.1;
+    font-size: clamp(21px, 5vw, 27px);
+    margin: 44px 0 14px;
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+  }
+
+  h2 .n {
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .12em;
+    color: var(--oxido);
+    flex: none;
+  }
+
+  h3 {
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--acero);
+    margin: 24px 0 6px;
+  }
+
+  p { margin: 0 0 14px; }
+  ul { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+
+  .ficha {
+    background: var(--panel);
+    border: 1px solid var(--linea);
+    padding: 18px 20px;
+    margin: 0 0 14px;
+    font-family: var(--dato);
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+
+  .ficha dt { color: var(--acero); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .ficha dd { margin: 0 0 12px; font-weight: 600; }
+  .ficha dd:last-child { margin-bottom: 0; }
+
+  .pie {
+    border-top: 1px solid var(--linea);
+    padding-block: 32px 40px;
+    color: var(--acero);
+    font-size: 13px;
+  }
+
+  .pie-enlaces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    font-family: var(--dato);
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .pie-enlaces a { color: var(--acero); text-decoration: none; }
+  .pie-enlaces a:hover { color: var(--oxido); }
+</style>
+</head>
+<body>
+
+<div class="franja" aria-hidden="true"></div>
+
+<header class="cabecera">
+  <div class="envoltura cabecera-fila">
+    <a class="marca" href="/">
+      <span class="marca-nombre">Mining <em>Big</em></span>
+    </a>
+    <a class="volver" href="/">Volver al inicio</a>
+  </div>
+</header>
+
+<main>
+  <div class="envoltura">
+
+    <p class="etiqueta">Documento legal</p>
+    <h1>Política de Privacidad</h1>
+    <p class="intro">
+      Esta política explica qué datos personales recoge Mining Big, con qué fin, y
+      qué derechos tienes sobre ellos. Aplica al formulario de registro de este
+      sitio y a las conversaciones por WhatsApp con nuestro número de atención.
+    </p>
+    <p class="actualizado">Última actualización: 31 de agosto de 2026</p>
+
+    <h2><span class="n">01</span> Quién es el responsable</h2>
+    <p>
+      El responsable del tratamiento de tus datos personales es:
+    </p>
+    <dl class="ficha">
+      <dt>Razón social</dt>
+      <dd>M &amp; B MINERÍA, CONSTRUCCIÓN Y MULTISERVICIOS S.A.C.</dd>
+      <dt>Nombre comercial</dt>
+      <dd>Mining Big</dd>
+      <dt>RUC</dt>
+      <dd>20615835421</dd>
+      <dt>Domicilio</dt>
+      <dd>Jr. Progreso Nro. 375, Urb. Mesa Redonda, San Martín de Porres, Lima, Perú</dd>
+      <dt>Correo de contacto</dt>
+      <dd><a href="mailto:gerencia@mining-big.com">gerencia@mining-big.com</a></dd>
+    </dl>
+
+    <h2><span class="n">02</span> Qué datos recogemos</h2>
+
+    <h3>A través del formulario de registro</h3>
+    <ul>
+      <li>Nombre y apellido</li>
+      <li>Empresa</li>
+      <li>Correo electrónico</li>
+      <li>Teléfono</li>
+      <li>Zona de operación y plazo estimado del alquiler</li>
+      <li>Tipo de equipo de interés</li>
+      <li>Detalle del frente de trabajo que escribas en el formulario</li>
+    </ul>
+
+    <h3>A través de WhatsApp</h3>
+    <p>
+      Si escribes a nuestro número de atención por WhatsApp, tratamos tu número de
+      teléfono, el nombre de perfil que WhatsApp nos muestra y el contenido de los
+      mensajes que nos envías, incluidas tus respuestas al cuestionario de
+      calificación (unidades, fechas, duración, altitud y datos similares del
+      alquiler). No recogemos tu lista de contactos ni ningún dato de tu
+      dispositivo.
+    </p>
+
+    <h3>Datos técnicos</h3>
+    <p>
+      Nuestro servidor registra datos técnicos básicos de cada solicitud (fecha y
+      hora, dirección IP, tipo de navegador) con fines de seguridad y para prevenir
+      abuso. Este sitio no usa cookies de publicidad ni de seguimiento de terceros.
+    </p>
+
+    <h2><span class="n">03</span> Para qué usamos los datos</h2>
+    <ul>
+      <li>Contactarte y prepararte una cotización de alquiler de maquinaria.</li>
+      <li>Coordinar la entrega, el traslado y la operación del equipo.</li>
+      <li>Responder tus consultas y darte seguimiento comercial.</li>
+      <li>Gestionar la relación contractual y cumplir obligaciones legales,
+          contables y tributarias.</li>
+      <li>Mantener la seguridad del servicio y prevenir fraude o abuso.</li>
+    </ul>
+    <p>
+      No usamos tus datos para publicidad de terceros y no tomamos decisiones
+      automatizadas que produzcan efectos jurídicos sobre ti.
+    </p>
+
+    <h2><span class="n">04</span> Base legal</h2>
+    <p>
+      Tratamos tus datos sobre la base de tu <strong>consentimiento</strong>, que
+      otorgas al enviar el formulario de registro o al iniciar una conversación con
+      nuestro número de WhatsApp, y sobre la base de la <strong>ejecución de la
+      relación contractual</strong> cuando ya eres cliente. El tratamiento se rige
+      por la Ley N.º 29733, Ley de Protección de Datos Personales del Perú, y su
+      reglamento.
+    </p>
+
+    <h2><span class="n">05</span> WhatsApp y Meta</h2>
+    <p>
+      La atención por WhatsApp se presta a través de la plataforma WhatsApp
+      Business, operada por Meta Platforms, Inc. Cuando te comunicas con nosotros
+      por ese canal, Meta interviene como proveedor de la plataforma de mensajería
+      y trata ciertos datos conforme a sus propias condiciones y política de
+      privacidad, disponibles en
+      <a href="https://www.whatsapp.com/legal/privacy-policy" target="_blank" rel="noopener">whatsapp.com/legal/privacy-policy</a>.
+      Nosotros usamos los mensajes únicamente para atender tu solicitud de alquiler.
+    </p>
+
+    <h2><span class="n">06</span> Con quién se comparten</h2>
+    <p>
+      No vendemos ni cedemos tus datos personales. Solo los tratan, por cuenta de
+      Mining Big y bajo contrato, los proveedores que necesitamos para operar el
+      servicio:
+    </p>
+    <ul>
+      <li>Proveedores de alojamiento web y base de datos.</li>
+      <li>Proveedor de la plataforma de mensajería de WhatsApp (Meta).</li>
+      <li>Proveedor de envío y recepción de correo electrónico.</li>
+    </ul>
+    <p>
+      También podemos entregar datos a autoridades competentes cuando una norma o
+      una orden judicial así lo exija.
+    </p>
+
+    <h2><span class="n">07</span> Transferencias internacionales</h2>
+    <p>
+      Algunos de nuestros proveedores de infraestructura y mensajería están
+      ubicados fuera del Perú. En esos casos, la transferencia se realiza con las
+      garantías contractuales que exige la normativa peruana de protección de datos
+      personales.
+    </p>
+
+    <h2><span class="n">08</span> Cuánto tiempo los conservamos</h2>
+    <p>
+      Conservamos tus datos mientras dure la relación comercial y, después, durante
+      el plazo necesario para atender responsabilidades legales, contables y
+      tributarias. Cumplidos esos plazos, los eliminamos o los anonimizamos. Si tu
+      registro no deriva en una relación comercial, lo conservamos por un máximo de
+      24 meses para poder retomar el contacto.
+    </p>
+
+    <h2><span class="n">09</span> Tus derechos</h2>
+    <p>
+      Puedes ejercer en cualquier momento tus derechos de <strong>acceso,
+      rectificación, cancelación y oposición</strong> (derechos ARCO), así como
+      revocar el consentimiento que nos diste. Para hacerlo, escribe a
+      <a href="mailto:gerencia@mining-big.com">gerencia@mining-big.com</a>
+      indicando el derecho que quieres ejercer y adjuntando una copia de tu
+      documento de identidad para verificar que eres el titular.
+    </p>
+    <p>
+      Si consideras que no atendimos tu solicitud, puedes presentar un reclamo ante
+      la Autoridad Nacional de Protección de Datos Personales del Ministerio de
+      Justicia y Derechos Humanos del Perú.
+    </p>
+
+    <h2><span class="n">10</span> Seguridad</h2>
+    <p>
+      Aplicamos medidas técnicas y organizativas razonables para proteger tus datos
+      frente a acceso no autorizado, pérdida o alteración: conexiones cifradas,
+      control de acceso a los sistemas y almacenamiento en proveedores con
+      estándares de seguridad reconocidos.
+    </p>
+
+    <h2><span class="n">11</span> Menores de edad</h2>
+    <p>
+      Este sitio y este canal de atención están dirigidos a empresas y a personas
+      mayores de edad. No recogemos de forma consciente datos de menores de edad.
+    </p>
+
+    <h2><span class="n">12</span> Cambios en esta política</h2>
+    <p>
+      Podemos actualizar esta política para reflejar cambios en el servicio o en la
+      normativa. La versión vigente es siempre la publicada en esta página, con su
+      fecha de última actualización al inicio.
+    </p>
+
+  </div>
+</main>
+
+<footer class="pie">
+  <div class="envoltura">
+    <nav class="pie-enlaces">
+      <a href="/">Inicio</a>
+      <a href="/#flota">Flota</a>
+      <a href="/#registro">Registrarse</a>
+      <a href="mailto:gerencia@mining-big.com">gerencia@mining-big.com</a>
+    </nav>
+    <p>© 2026 Mining Big — M &amp; B Minería, Construcción y Multiservicios S.A.C. RUC 20615835421.</p>
+  </div>
+</footer>
+
+<div class="franja" aria-hidden="true"></div>
+
+</body>
+</html>

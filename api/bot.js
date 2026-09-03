@@ -33,9 +33,22 @@ const {
   MENU, NO_ENTENDI, RESPUESTAS, RAMAS, PREGUNTAS, CUESTIONARIO,
 } = require('../lib/bot-contenido');
 
-// Se pide el cuerpo sin parsear porque la firma de Meta se calcula sobre los
-// bytes exactos. El detalle está en `lib/peticion.js`.
-module.exports.config = CONFIG_SIN_PARSEO;
+// La config va al FINAL del archivo, no acá: más abajo el handler hace
+// `module.exports = async function handler(...)`, que reemplaza el objeto
+// entero y se lleva puesta cualquier propiedad asignada antes. Estuvo mal
+// desde el 2026-08-21.
+//
+// Corregirlo no arregló la firma, y conviene saber por qué:
+// `config = { api: { bodyParser: false } }` es una convención de **Next.js**.
+// Esto es una Serverless Function común de Vercel (ver `package.json`: no hay
+// Next), y ahí esa opción NO EXISTE — el runtime parsea el cuerpo siempre y
+// `lib/peticion.js` nunca ve los bytes crudos. Por eso cada mensaje sigue
+// logueando `bot: ATENCION — cuerpo ya parseado: firma NO comprobada`.
+//
+// PENDIENTE DE SEGURIDAD: mientras tanto este endpoint es público y sin
+// autenticar, y cualquiera que sepa la URL puede inyectar mensajes falsos en
+// `mensajes` y `conversaciones`. Se deja la asignación puesta (correcta y
+// lista si esto migra a un runtime que sí la respete), pero hoy no hace nada.
 
 // ── Normalización ────────────────────────────────────────────────────────────
 
@@ -215,7 +228,10 @@ const COLUMNAS = new Set(PREGUNTAS.map((p) => p.columna));
 
 async function guardarConversacion(bd, telefono, resultado, folioPrevio) {
   const columnas = ['telefono', 'estado', 'folio', 'actualizado_en'];
-  const valores = [telefono, resultado.estado, resultado.folio || folioPrevio || null];
+  // La rama FAQ no trae `estado`. La columna es NOT NULL DEFAULT '': pasar
+  // null explícito viola la constraint (el DEFAULT solo aplica si se omite la
+  // columna), así que se normaliza a '' — que es justo "sin cuestionario".
+  const valores = [telefono, resultado.estado || '', resultado.folio || folioPrevio || null];
   const marcadores = ['$1', '$2', '$3', 'now()'];
 
   for (const [columna, valor] of Object.entries(resultado.campos || {})) {
@@ -319,13 +335,18 @@ module.exports = async function handler(req, res) {
   }
   if (firma.motivo) console.error('bot: ATENCION —', firma.motivo);
 
-  let cuerpo = req.body;
+  // `req.body` solo se toca si no hubo bytes crudos: tocarlo dispara el getter
+  // perezoso de Vercel, y con él el parseo que arruina la comprobación de firma
+  // del próximo que lea. Ver `lib/peticion.js`.
+  let cuerpo;
   if (crudo) {
     try {
       cuerpo = JSON.parse(crudo.toString('utf8'));
     } catch (e) {
       return res.status(400).json({ ok: false, error: 'json invalido' });
     }
+  } else {
+    cuerpo = req.body;
   }
 
   // Meta manda por el MISMO campo `messages` los mensajes entrantes y los
@@ -428,6 +449,11 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: false, error: 'fallo interno' });
   }
 };
+
+// Se pide el cuerpo sin parsear porque la firma de Meta se calcula sobre los
+// bytes exactos. El detalle está en `lib/peticion.js`. Va acá, DESPUÉS de
+// asignar el handler, porque esa asignación reemplaza `module.exports` entero.
+module.exports.config = CONFIG_SIN_PARSEO;
 
 // Exportados para las pruebas: el motor es una función pura y se puede
 // ejercitar entero sin base ni red.
