@@ -1187,10 +1187,10 @@
         <!-- Plano 3D: si WebGL carga, reemplaza este SVG por un canvas arrastrable
              (ver script "modulo-placa-3d" al final). Sin JS/WebGL, queda este dibujo
              plano — es el mismo pictograma que ya usa el resto de la página. -->
-        <svg class="placa-dibujo" viewBox="0 0 80 48" role="img" aria-label="Excavadora de orugas">
+        <svg class="placa-dibujo" viewBox="0 0 80 48" role="img" aria-label="Excavadora">
           <use href="#g-excavadora"/>
         </svg>
-        <canvas class="placa-3d" aria-label="Excavadora de orugas en 3D, arrastrable para rotar" hidden></canvas>
+        <canvas class="placa-3d" aria-label="Excavadora en 3D, arrastrable para rotar" hidden></canvas>
         <div class="placa-cabeza">
           <p class="etiqueta">Placa de identificación</p>
           <strong>Flota 2026</strong>
@@ -1811,12 +1811,13 @@
 
 <!-- ─────────────────────────────────────────────────────────────────────
      Plano 3D de la placa de identificación (hero).
-     Solo reemplaza el pictograma plano si el navegador soporta módulos ES
-     y WebGL; si algo falla, el <svg class="placa-dibujo"> de arriba se
-     queda tal cual. No es un archivo/modelo descargado: la excavadora se
-     arma con primitivas de Three.js (sin texturas, sin .glb) para que
-     pese poco. Colores leídos de las custom properties del tema, así que
-     sigue claro/oscuro igual que el resto de la página.
+     Solo reemplaza el pictograma plano si el navegador soporta módulos ES,
+     WebGL, y el .glb de abajo termina de cargar; si algo de eso falla, el
+     <svg class="placa-dibujo"> de arriba se queda tal cual. El modelo es
+     modelos-3d/excavadora.glb (CC0, ver el comentario junto a GLTFLoader
+     más abajo) — sin texturas de imagen, así que sigue pesando poco aunque
+     ya no sea geometría por primitivas. Solo la luz de relleno usa el
+     --oxido del tema; el modelo conserva sus propios colores.
      ───────────────────────────────────────────────────────────────────── -->
 <script type="importmap">
 {
@@ -1842,14 +1843,16 @@
     }
     if (!hayWebGL()) return;
 
-    var THREE, OrbitControls;
+    var THREE, OrbitControls, GLTFLoader;
     try {
       var mods = await Promise.all([
         import("three"),
         import("three/addons/controls/OrbitControls.js"),
+        import("three/addons/loaders/GLTFLoader.js"),
       ]);
       THREE = mods[0];
       OrbitControls = mods[1].OrbitControls;
+      GLTFLoader = mods[2].GLTFLoader;
     } catch (e) {
       return; // sin red o CDN bloqueado: se queda el SVG plano.
     }
@@ -1877,85 +1880,44 @@
     luzRelleno.position.set(-4, 2, -3);
     escena.add(luzRelleno);
 
-    // ── Excavadora de orugas, armada con primitivas ─────────────────────
-    var acero = colorTema("--acero", "#5C666E");
-    var oxido = colorTema("--oxido", "#B24A16");
-    var sombraMetal = new THREE.Color("#20242a");
+    // ── Excavadora: modelo descargado, no primitivas ─────────────────────
+    // Fuente: opengameart.org/content/excavator, autor Iacox, licencia CC0
+    // (dominio público, sin necesidad de crédito). Original en .blend con
+    // terreno, montículos de tierra, cámara y ~1 min de animación de una
+    // universidad; se descartó todo eso y se exportó solo la máquina, en su
+    // pose de reposo, a este .glb — sin texturas de imagen (el autor ya las
+    // había quitado del .blend original por pedido de OpenGameArt, para que
+    // calificara de verdad como CC0). Colores tal como vienen del modelo
+    // (amarillo/negro realista), no los de la paleta del sitio: es la pieza
+    // que el usuario encontró y pidió usar en vez de la armada a mano.
+    var oxido = colorTema("--oxido", "#B24A16"); // solo para un tinte cálido en la luz de relleno
 
-    var matAcero = new THREE.MeshStandardMaterial({ color: acero, roughness: .55, metalness: .35 });
-    var matOxido = new THREE.MeshStandardMaterial({ color: oxido, roughness: .5, metalness: .2 });
-    var matOscuro = new THREE.MeshStandardMaterial({ color: sombraMetal, roughness: .6, metalness: .4 });
-    var matVidrio = new THREE.MeshStandardMaterial({ color: "#9fb4bd", roughness: .15, metalness: .1 });
+    var cargador = new GLTFLoader();
+    var gltf = await new Promise(function (resolve, reject) {
+      cargador.load("modelos-3d/excavadora.glb", resolve, undefined, reject);
+    }).catch(function () { return null; });
 
-    var maquina = new THREE.Group();
+    if (!gltf) return; // el .glb no cargó (red, 404): se queda el SVG plano.
 
-    // Orugas + bastidor
-    var oruga = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.5, 1.6), matOscuro);
-    oruga.position.y = 0.25;
-    maquina.add(oruga);
-    [-1.55, 1.55].forEach(function (x) {
-      var rueda = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.68, 14), matOscuro);
-      rueda.rotation.x = Math.PI / 2;
-      rueda.position.set(x, 0.25, 0);
-      maquina.add(rueda);
-    });
-    var bastidor = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.32, 1.3), matAcero);
-    bastidor.position.y = 0.66;
-    maquina.add(bastidor);
+    var maquina = gltf.scene;
 
-    // Casa (torreta) + cabina
-    var casa = new THREE.Group();
-    casa.position.y = 0.9;
-    var cuerpoCasa = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.85, 1.4), matOxido);
-    cuerpoCasa.position.y = 0.42;
-    casa.add(cuerpoCasa);
-    var cabina = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.55, 1.32), matVidrio);
-    cabina.position.set(-0.42, 0.9, 0);
-    casa.add(cabina);
-    var contrapeso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 1.5), matAcero);
-    contrapeso.position.set(0.75, 0.5, 0);
-    casa.add(contrapeso);
-    maquina.add(casa);
-
-    // Brazo articulado: pluma → balancín → cucharón, encadenados como en un
-    // brazo robótico (cada pivote es hijo del anterior, en su espacio local).
-    var pluma = new THREE.Group();
-    pluma.position.set(-0.55, 1.05, 0);
-    pluma.rotation.z = THREE.MathUtils.degToRad(48);
-    var largoPluma = 1.95;
-    var mallaPluma = new THREE.Mesh(new THREE.BoxGeometry(largoPluma, 0.3, 0.3), matOxido);
-    mallaPluma.position.x = largoPluma / 2;
-    pluma.add(mallaPluma);
-    casa.add(pluma);
-
-    var balancin = new THREE.Group();
-    balancin.position.x = largoPluma;
-    balancin.rotation.z = THREE.MathUtils.degToRad(-108);
-    var largoBalancin = 1.55;
-    var mallaBalancin = new THREE.Mesh(new THREE.BoxGeometry(largoBalancin, 0.26, 0.26), matOxido);
-    mallaBalancin.position.x = largoBalancin / 2;
-    balancin.add(mallaBalancin);
-    pluma.add(balancin);
-
-    var cucharonPivote = new THREE.Group();
-    cucharonPivote.position.x = largoBalancin;
-    cucharonPivote.rotation.z = THREE.MathUtils.degToRad(-58);
-    var cucharon = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.42, 0.62), matOscuro);
-    cucharon.position.x = 0.34;
-    cucharonPivote.add(cucharon);
-    for (var i = -1; i <= 1; i++) {
-      var diente = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22, 8), matOscuro);
-      diente.rotation.z = Math.PI / 2;
-      diente.position.set(0.66, 0.13 * i, 0);
-      cucharonPivote.add(diente);
-    }
-    balancin.add(cucharonPivote);
-
-    maquina.position.y = -0.9;
+    // Centrar en X/Z y apoyar el punto más bajo en Y=0: el modelo no viene
+    // centrado en su origen (arrastra el pivote del archivo original).
+    var caja = new THREE.Box3().setFromObject(maquina);
+    var centro = caja.getCenter(new THREE.Vector3());
+    var tamano = caja.getSize(new THREE.Vector3());
+    maquina.position.x -= centro.x;
+    maquina.position.z -= centro.z;
+    maquina.position.y -= caja.min.y;
     escena.add(maquina);
 
+    // Encuadre de cámara proporcional al tamaño real del modelo, no a mano:
+    // así si el modelo cambia de nuevo, esto no se vuelve a romper en silencio.
+    camara.position.set(tamano.x * 1.05, tamano.y * 1.35, tamano.z * 1.1 + tamano.x * 0.55);
+    luzRelleno.color.copy(oxido);
+
     var controles = new OrbitControls(camara, lienzo);
-    controles.target.set(0, 0.7, 0);
+    controles.target.set(0, tamano.y * 0.45, 0);
     controles.enableZoom = false;
     controles.enablePan = false;
     controles.minPolarAngle = THREE.MathUtils.degToRad(35);
@@ -1986,8 +1948,9 @@
       renderizador.setSize(ancho, alto, false);
     }
 
-    // Solo se muestra el 3D (y se apaga el SVG plano) una vez que ya sabemos
-    // renderizar: si algo de arriba falló, nunca llegamos hasta acá.
+    // Solo se muestra el 3D (y se apaga el SVG plano) una vez que el modelo
+    // ya cargó y está en escena: si algo de arriba falló, nunca llegamos
+    // hasta acá y el SVG se queda como estaba.
     dibujoPlano.setAttribute("hidden", "");
     lienzo.removeAttribute("hidden");
     ajustarTamano();
@@ -1998,11 +1961,10 @@
       window.addEventListener("resize", ajustarTamano);
     }
 
-    // Re-lee los colores del tema si el sistema cambia de claro a oscuro
-    // (o viceversa) mientras la página sigue abierta.
+    // Re-lee el tinte de la luz de relleno si el sistema cambia de tema
+    // (el modelo mismo no cambia de color: son sus materiales originales).
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
-      matAcero.color.copy(colorTema("--acero", "#5C666E"));
-      matOxido.color.copy(colorTema("--oxido", "#B24A16"));
+      luzRelleno.color.copy(colorTema("--oxido", "#B24A16"));
     });
 
     function bucle() {
