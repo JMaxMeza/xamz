@@ -404,39 +404,61 @@ cabecera `x-mb-secreto`.
 
 ### Cambiar el número de WhatsApp
 
-> [!info] Número propio: **+51 983 582 869** — dado de alta el 2026-08-23
-> Reemplaza al de prueba de Meta (`15556371888`), que solo escribía a los 5
-> destinatarios cargados a mano en la consola y no atendía público real.
+> [!success] Migrado el 2026-09-03: **+51 997 013 900**, número completamente nuevo
+> No es un traslado del +51 983 582 869 — era una línea nueva sin usar, así
+> que se le dio de alta **todo desde cero como número**: entrada en la WABA,
+> Phone Number ID propio, registro en la Cloud API. Se confirmó que se agrega
+> a la **misma WABA** `1045282521703032` (la del negocio, no una nueva) —
+> nada del número anterior se reutilizó.
 >
-> **Ya dado de alta** en la WABA `1045282521703032`, Phone Number ID
-> **`1261469877055727`**. `WHATSAPP_NEGOCIO` en [`index.html`](index.html) ya
-> apunta al número nuevo. Falta generar el token permanente de System User y
-> el `WHATSAPP_APP_SECRET` en el panel de Meta, cargar los tres valores en
-> Vercel, y apuntar el webhook.
+> El botón "Activar verificación en dos pasos" de WhatsApp Manager **no sirve
+> como primer paso** — pide registrar la cuenta en la Cloud API primero. Se
+> registró con `POST /1340193299172884/register` +
+> `{"messaging_product":"whatsapp","pin":"…"}` desde el Graph API Explorer
+> (no el cURL que el propio Explorer genera con "Obtener código", que falla
+> por poner los parámetros en la query string).
 >
-> **No desplegar todavía**: hasta que el token y el App Secret estén puestos,
-> el bot no puede enviar ni validar nada, y el enlace `wa.me` de la landing
-> llevaría a un número que no contesta.
+> El webhook **no hizo falta tocarlo**: está configurado a nivel app+WABA
+> (`https://mining-big.com/api/bot`, campo `messages`), así que un número
+> nuevo dentro de la misma WABA cae ahí solo.
+>
+> **Verificado de punta a punta**: "hola" a +51 997 013 900 → el bot contesta.
+> +51 983 582 869 sigue activo en paralelo — decisión pendiente, sin apuro,
+> de cuándo desconectarlo.
 
-Esto es **todo** lo que hay que tocar al cambiar de número — está centralizado
-a propósito para que no haya que buscarlo:
+Esto es **todo** lo que hubo que tocar al cambiar de número — queda
+centralizado a propósito para la próxima vez:
 
 | Dónde | Qué | Estado |
 |---|---|---|
-| Meta · alta del número | agregarlo a la WABA y verificarlo con el código que llega por SMS/llamada | ✅ hecho — WABA `1045282521703032` |
-| Vercel · `WHATSAPP_PHONE_ID` | el *Phone Number ID* nuevo de Meta. **Redeployar después.** | ✅ `1261469877055727` |
-| Vercel · `WHATSAPP_TOKEN` | token permanente de *System User*, no el de 24 h de la consola | ⬜ pendiente |
+| Meta · alta del número | agregarlo a la WABA y verificarlo con el código que llega por SMS/llamada | ✅ hecho — Conectado |
+| Meta · registro en la Cloud API | `POST /{phone_number_id}/register` con PIN de 6 dígitos (ver arriba) | ✅ hecho |
+| Vercel · `WHATSAPP_PHONE_ID` | el *Phone Number ID* nuevo de Meta. **Redeployar después.** | ✅ `1340193299172884` |
+| Vercel · `WHATSAPP_TOKEN` | token permanente de *System User* | ✅ cargado |
+| Vercel · `WHATSAPP_APP_SECRET` | de la app de Meta — no cambia, misma app/WABA | ✅ no cambia |
 | Vercel · `ASESOR_WHATSAPP` | solo si además cambia el teléfono del asesor | ✅ no cambia (`51934747464`) |
-| [`index.html`](index.html) · `WHATSAPP_NEGOCIO` | el número del enlace `wa.me` que ve el cliente al registrarse | ✅ `51983582869` |
+| [`index.html`](index.html) · `WHATSAPP_NEGOCIO` | el número del enlace `wa.me` que ve el cliente al registrarse | ✅ `51997013900`, desplegado y verificado en vivo |
 | [`index.html`](index.html) · `TELEFONO_VISIBLE` | el que se muestra en el pie (puede ser otro) | ✅ sigue el del asesor |
-| Meta · webhook | volver a apuntar `https://mining-big.com/api/bot` al número nuevo y suscribir `messages` | ⬜ pendiente |
+| Meta · webhook | apuntar `https://mining-big.com/api/bot` al número nuevo y suscribir `messages` | ✅ no requirió cambios — es por WABA, no por número |
 
 > [!warning] El número no puede estar activo en la app de WhatsApp
 > La Cloud API rechaza un número que ya tenga cuenta en WhatsApp o WhatsApp
-> Business. Si +51 983 582 869 la tiene, hay que **borrar esa cuenta desde la
+> Business. Si +51 997 013 900 la tiene, hay que **borrar esa cuenta desde la
 > app** (Ajustes → Cuenta → Eliminar mi cuenta) antes del alta, y eso se lleva
 > el historial de esa cuenta. Si la línea es nueva y sin usar, no hay nada que
 > hacer.
+
+<details>
+<summary>Histórico: alta del +51 983 582 869 (2026-08-23), número que este cambio reemplaza</summary>
+
+> [!info] Número propio: **+51 983 582 869** — dado de alta el 2026-08-23
+> Reemplazó al de prueba de Meta (`15556371888`), que solo escribía a los 5
+> destinatarios cargados a mano en la consola y no atendía público real.
+> Dado de alta en la WABA `1045282521703032`, Phone Number ID
+> `1261469877055727`. El token permanente de System User llegó más tarde,
+> bloqueado mientras la WABA estuvo en "Revisión en curso".
+
+</details>
 
 El bot **no** lleva el número emisor escrito en ninguna parte: lo lee del
 `phone_number_id` que viene en cada mensaje entrante, así que responde siempre
