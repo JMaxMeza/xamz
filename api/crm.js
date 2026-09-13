@@ -10,9 +10,11 @@
 //   datos         -> { ok, registros[], conversaciones[], mensajes[], alertas[],
 //                       correos[], mensajes_recortados }
 //   atendido      -> { ok, cambiado }              { folio, atendido }
+//   cambiar_etapa -> { ok, cambiado }              { folio, etapa }
 //   toggle_bot    -> { ok }                        { telefono, activo }
 //   alerta_vista  -> { ok, cambiado }              { id }
 //   enviar        -> { ok, aviso? } | { ok:false, error }   { telefono, texto }
+//   enviar_imagen -> { ok, aviso? } | { ok:false, error }   { telefono, datos (base64), mimeType, caption? }
 //   enviar_correo -> { ok, aviso? } | { ok:false, error }   { email, asunto, texto, folio? }
 //
 // `cambiado:false` significa que la fila no existe (folio o id que ya no
@@ -26,7 +28,8 @@
 
 const crypto = require('crypto');
 const { obtenerPool, cadenaConexion, soloDigitos } = require('../lib/db');
-const { enviarWhatsApp } = require('../lib/whatsapp');
+const { enviarWhatsApp, enviarImagenWhatsApp } = require('../lib/whatsapp');
+const { subirArchivo } = require('../lib/storage');
 const { enviarCorreo, normalizarEmail } = require('../lib/correo');
 const { crearTope, ipDe } = require('../lib/tope-tasa');
 
@@ -57,8 +60,15 @@ function texto(valor, maximo) {
 // línea en un lugar, contra siete en el front.
 const COMO_REGISTRO = `
   id, folio, nombre, empresa, email, telefono, zona, plazo, equipos,
-  detalle, atendido, creado_en AS "createdAt"
+  detalle, atendido, etapa, creado_en AS "createdAt"
 `;
+
+// Mismas 6 etapas que el CHECK de la base (db/schema.sql, db/etapas-2026-09-04.sql).
+// Se repite acá en vez de leerla de la base porque es una lista fija y
+// consultarla en cada request sería una vuelta extra sin ninguna ganancia.
+const ETAPAS_VALIDAS = new Set([
+  'nuevo', 'contactado', 'cotizado', 'negociando', 'ganado', 'perdido',
+]);
 
 // Tope de mensajes que viaja en cada sondeo. El panel se trae el historial
 // completo cada 45 s y lo filtra en el navegador; sin tope, el día que haya
@@ -86,7 +96,8 @@ async function leerTodo(bd) {
     // sostiene sola. Lo único que sigue interpolado es `COMO_REGISTRO`, que
     // es una lista de columnas — eso no se puede parametrizar en SQL.
     bd.query(
-      `SELECT id, telefono, direccion, texto, autor, creado_en AS "createdAt"
+      `SELECT id, telefono, direccion, texto, autor, media_url AS "mediaUrl",
+              media_tipo AS "mediaTipo", creado_en AS "createdAt"
          FROM mensajes ORDER BY id DESC LIMIT $1`,
       [TOPE_MENSAJES]
     ),
@@ -201,6 +212,16 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ok: true, cambiado: r.rowCount > 0 });
       }
 
+      case 'cambiar_etapa': {
+        const folio = texto(cuerpo.folio, 40);
+        const etapa = texto(cuerpo.etapa, 20);
+        if (!folio || !ETAPAS_VALIDAS.has(etapa)) {
+          return res.status(400).json({ ok: false, error: 'falta el folio o la etapa no es valida' });
+        }
+        const r = await bd.query('UPDATE registros SET etapa = $1 WHERE folio = $2', [etapa, folio]);
+        return res.status(200).json({ ok: true, cambiado: r.rowCount > 0 });
+      }
+
       case 'toggle_bot': {
         const telefono = soloDigitos(cuerpo.telefono);
         if (!telefono) {
@@ -258,6 +279,64 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({
             ok: true,
             aviso: 'el mensaje salio, pero no se pudo guardar en el historial',
+          });
+        }
+        return res.status(200).json({ ok: true });
+      }
+
+      // Mismo contrato y mismas reglas que `enviar`, pero con un adjunto en
+      // vez de (o ademas de) texto. `datos` no pasa por `texto()`: es base64
+      // de una imagen entera, y truncarla a `maximo` la corrompería en
+      // silencio — exactamente la clase de fallo que esta API evita en todo
+      // lo demás.
+      case 'enviar_imagen': {
+        const telefono = soloDigitos(cuerpo.telefono);
+        const datosBase64 = typeof cuerpo.datos === 'string' ? cuerpo.datos : '';
+        const mimeType = texto(cuerpo.mimeType, 50) || 'image/jpeg';
+        const caption = texto(cuerpo.caption, 1000);
+        if (!telefono || !datosBase64) {
+          return res.status(400).json({ ok: false, error: 'falta telefono o imagen' });
+        }
+        // 3 MB de archivo original ⇒ ~4 MB en base64. Vercel topa el cuerpo
+        // de una función serverless en ~4.5 MB; con margen para el resto del
+        // JSON, 3 MB es el limite real, no uno arbitrario.
+        const LIMITE_BYTES = 3 * 1024 * 1024;
+        const tamanoAprox = Math.ceil((datosBase64.length * 3) / 4);
+        if (tamanoAprox > LIMITE_BYTES) {
+          return res.status(400).json({ ok: false, error: 'la imagen supera el límite de 3 MB' });
+        }
+
+        let bytes;
+        try {
+          bytes = Buffer.from(datosBase64, 'base64');
+        } catch (e) {
+          return res.status(400).json({ ok: false, error: 'imagen invalida (base64)' });
+        }
+
+        const extension = (mimeType.split('/')[1] || 'jpg').split(';')[0];
+        const ruta = `salientes/${crypto.randomUUID()}.${extension}`;
+        let urlPublica;
+        try {
+          urlPublica = await subirArchivo(ruta, bytes, mimeType);
+        } catch (e) {
+          console.error('crm: no se pudo subir la imagen a Storage', e.message);
+          return res.status(200).json({ ok: false, error: 'no se pudo subir la imagen: ' + e.message });
+        }
+
+        const envio = await enviarImagenWhatsApp(telefono, urlPublica, caption);
+        if (!envio.ok) return res.status(200).json(envio);
+
+        try {
+          await bd.query(
+            `INSERT INTO mensajes (telefono, direccion, texto, autor, media_url, media_tipo)
+                  VALUES ($1, 'out', $2, 'asesor', $3, 'image')`,
+            [telefono, caption, urlPublica]
+          );
+        } catch (e) {
+          console.error('crm: imagen enviada a WhatsApp pero no registrada en la base', e);
+          return res.status(200).json({
+            ok: true,
+            aviso: 'la imagen salio, pero no se pudo guardar en el historial',
           });
         }
         return res.status(200).json({ ok: true });

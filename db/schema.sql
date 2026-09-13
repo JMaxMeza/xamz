@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS registros (
   detalle     TEXT        NOT NULL DEFAULT '',
   origen      TEXT        NOT NULL DEFAULT 'landing',
   atendido    BOOLEAN     NOT NULL DEFAULT false,
+  -- Etapa del embudo de ventas, independiente de `atendido`: `atendido` es el
+  -- "ya lo miré" del asesor, `etapa` es dónde está el lead en el proceso. No
+  -- se derivan una de la otra a propósito (ver `dos-fuentes-de-verdad` en la
+  -- wiki) — cada una se guarda y se cambia por su cuenta.
+  etapa       TEXT        NOT NULL DEFAULT 'nuevo'
+                CHECK (etapa IN ('nuevo', 'contactado', 'cotizado', 'negociando', 'ganado', 'perdido')),
   creado_en   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

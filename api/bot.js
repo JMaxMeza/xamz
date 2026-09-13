@@ -27,7 +27,8 @@
 
 const crypto = require('crypto');
 const { obtenerPool, cadenaConexion, soloDigitos } = require('../lib/db');
-const { enviarWhatsApp } = require('../lib/whatsapp');
+const { enviarWhatsApp, resolverUrlMedia, descargarMedia } = require('../lib/whatsapp');
+const { subirArchivo, configurado: storageConfigurado } = require('../lib/storage');
 const { CONFIG_SIN_PARSEO, cuerpoCrudo, consulta } = require('../lib/peticion');
 const {
   MENU, NO_ENTENDI, RESPUESTAS, RAMAS, PREGUNTAS, CUESTIONARIO,
@@ -262,16 +263,47 @@ async function guardarConversacion(bd, telefono, resultado, folioPrevio) {
 async function registrarMensaje(bd, fila) {
   try {
     const r = await bd.query(
-      `INSERT INTO mensajes (telefono, direccion, texto, autor, wa_id)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO mensajes (telefono, direccion, texto, autor, wa_id, media_url, media_tipo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (wa_id) WHERE wa_id IS NOT NULL DO NOTHING`,
-      [fila.telefono, fila.direccion, fila.texto, fila.autor, fila.wa_id || null]
+      [
+        fila.telefono, fila.direccion, fila.texto, fila.autor, fila.wa_id || null,
+        fila.mediaUrl || null, fila.mediaTipo || null,
+      ]
     );
     return { ok: true, insertadas: r.rowCount };
   } catch (e) {
     console.error('bot: no se pudo registrar el mensaje:', e.message);
     // `null` y no 0: 0 significaría "duplicado" y esto es "no sé".
     return { ok: false, insertadas: null };
+  }
+}
+
+// Tipos de mensaje de WhatsApp que no son texto ni imagen, pero que antes se
+// perdían en silencio igual que las imágenes. No se procesan (no hay nada
+// que descargar de un modo útil para 'location' o 'contacts'), pero al menos
+// el asesor se entera de que algo llegó, en vez de que el chat no diga nada.
+const TIPOS_NO_TEXTO_CONOCIDOS = {
+  audio: 'audio', document: 'documento', video: 'video',
+  sticker: 'sticker', location: 'ubicación', contacts: 'contacto',
+};
+
+// Descarga una imagen entrante de Meta y la sube al bucket público. Nunca
+// tira: si algo falla (falta configurar Storage, Meta rechaza el media id
+// vencido, etc.) devuelve `null` y quien llama registra el mensaje igual,
+// con un texto que dice qué pasó — mejor eso que perder el aviso de que
+// llegó una imagen.
+async function procesarImagenEntrante(mediaId) {
+  try {
+    const info = await resolverUrlMedia(mediaId);
+    const { buffer, mimeType } = await descargarMedia(info.url);
+    const extension = (mimeType.split('/')[1] || 'jpg').split(';')[0];
+    const ruta = `entrantes/${mediaId}.${extension}`;
+    const url = await subirArchivo(ruta, buffer, mimeType || info.mime_type);
+    return { url, error: null };
+  } catch (e) {
+    console.error('bot: no se pudo procesar la imagen entrante:', e.message);
+    return { url: null, error: e.message };
   }
 }
 
@@ -355,12 +387,48 @@ module.exports = async function handler(req, res) {
   // traen `messages`.
   const valor = cuerpo?.entry?.[0]?.changes?.[0]?.value;
   const mensaje = valor?.messages?.[0];
-  const texto = mensaje?.text?.body;
 
-  if (!mensaje || mensaje.type !== 'text' || !texto) {
-    // No es un mensaje de texto (estado, imagen, audio…). Se responde 200 para
-    // que Meta no reintente: no hay nada que hacer y no es un error.
-    return res.status(200).json({ ok: true, ignorado: 'no es un mensaje de texto' });
+  if (!mensaje) {
+    // No trae mensaje: es un evento de estado (enviado/entregado/leído).
+    // Se responde 200 para que Meta no reintente: no hay nada que hacer.
+    return res.status(200).json({ ok: true, ignorado: 'no trae mensaje' });
+  }
+
+  // Qué guardar según el tipo, ANTES de tocar teléfono o base: un tipo que
+  // no se procesa (reacción, un tipo nuevo de Meta) se descarta gratis, sin
+  // depender de que la base esté configurada — igual que antes, cuando el
+  // único filtro era "es texto o no". La única excepción real es 'image':
+  // procesarla hace una llamada a Meta y a Storage, pero eso no necesita
+  // teléfono ni base tampoco, así que sigue sin importar el orden.
+  let texto = null;
+  let mediaUrl = null;
+  let mediaTipo = null;
+
+  if (mensaje.type === 'text') {
+    texto = mensaje.text?.body || null;
+  } else if (mensaje.type === 'image' && mensaje.image?.id) {
+    mediaTipo = 'image';
+    const resultado = await procesarImagenEntrante(mensaje.image.id);
+    if (resultado.url) {
+      mediaUrl = resultado.url;
+      texto = mensaje.image.caption || '';
+    } else {
+      // Storage sin configurar, media vencido, lo que sea: no se pierde el
+      // aviso de que llegó algo, aunque no se pudo guardar la imagen en sí.
+      texto = '[imagen recibida, no se pudo procesar — revisar WhatsApp directo]';
+    }
+  } else if (TIPOS_NO_TEXTO_CONOCIDOS[mensaje.type]) {
+    // Audio, documento, video, sticker, ubicación, contacto: no se procesan
+    // (no hay una forma útil de "descargar" una ubicación), pero al menos
+    // el asesor ve que algo llegó en vez de que el chat no diga nada.
+    texto = `[el cliente mandó un/a ${TIPOS_NO_TEXTO_CONOCIDOS[mensaje.type]} — revisar WhatsApp directo, este panel todavía no lo muestra]`;
+  }
+
+  if (!texto && texto !== '') {
+    // Ni texto, ni imagen procesada (con o sin caption), ni un tipo
+    // conocido de los de arriba: reacciones, o un tipo nuevo de Meta. Se
+    // responde 200 para que Meta no reintente: no hay nada que hacer.
+    return res.status(200).json({ ok: true, ignorado: 'no es un mensaje procesable' });
   }
 
   const telefono = soloDigitos(mensaje.from);
@@ -385,9 +453,17 @@ module.exports = async function handler(req, res) {
     // respuesta dos o tres veces.
     const registro = await registrarMensaje(bd, {
       telefono, direccion: 'in', texto, autor: 'cliente', wa_id: mensaje.id,
+      mediaUrl, mediaTipo,
     });
     if (registro.insertadas === 0) {
       return res.status(200).json({ ok: true, ignorado: 'mensaje repetido' });
+    }
+
+    // Solo el texto sigue al motor de FAQ/cuestionario: no tiene sentido
+    // tratar de "entender" una foto o un audio con un motor de palabras
+    // clave. Queda registrado para el asesor y ahí termina, para este tipo.
+    if (mensaje.type !== 'text') {
+      return res.status(200).json({ ok: true, registrado: mensaje.type });
     }
 
     const { rows } = await bd.query(

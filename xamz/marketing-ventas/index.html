@@ -1,0 +1,1272 @@
+<title>XAMZ Marketing y Ventas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..48,500;12..48,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:   #f7f5f4;
+    --surface:  #ffffff;
+    --surface-2:#f0edeb;
+    --ink:      #23201f;
+    --muted:    #6f6763;
+    --faint:    #9a918c;
+    --line:     #e6e1de;
+    --line-2:   #d8d2ce;
+    --accent:   #b8327f;
+    --accent-ink:#ffffff;
+    --accent-wash:#f7e6f1;
+    --ok:       #3f7d54;
+    --ok-wash:  #e4efe6;
+    --warn:     #a06f16;
+    --warn-wash:#f5ebd8;
+    --crit:     #b23b3b;
+    --crit-wash:#f4e2e0;
+    --shadow:   0 1px 2px rgba(30,20,25,.06), 0 8px 24px -12px rgba(30,20,25,.18);
+    --radius:   10px;
+    --font-display: "Bricolage Grotesque", "Georgia", serif;
+    --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #171315;
+      --surface:  #211c1f;
+      --surface-2:#2b2429;
+      --ink:      #ece7e6;
+      --muted:    #a89f9c;
+      --faint:    #7c726f;
+      --line:     #362e32;
+      --line-2:   #453a40;
+      --accent:   #e070b0;
+      --accent-ink:#241016;
+      --accent-wash:#3a2130;
+      --ok:       #6bb387;
+      --ok-wash:  #22322a;
+      --warn:     #d7a648;
+      --warn-wash:#352c1d;
+      --crit:     #e5776f;
+      --crit-wash:#38241f;
+      --shadow:   0 1px 2px rgba(0,0,0,.4), 0 14px 34px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:   #171315;
+    --surface:  #211c1f;
+    --surface-2:#2b2429;
+    --ink:      #ece7e6;
+    --muted:    #a89f9c;
+    --faint:    #7c726f;
+    --line:     #362e32;
+    --line-2:   #453a40;
+    --accent:   #e070b0;
+    --accent-ink:#241016;
+    --accent-wash:#3a2130;
+    --ok:       #6bb387;
+    --ok-wash:  #22322a;
+    --warn:     #d7a648;
+    --warn-wash:#352c1d;
+    --crit:     #e5776f;
+    --crit-wash:#38241f;
+    --shadow:   0 1px 2px rgba(0,0,0,.4), 0 14px 34px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- shell ---------- */
+  .app { display: grid; grid-template-columns: 232px 1fr; min-height: 100%; }
+  .side {
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 18px 14px;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .brand { display: flex; align-items: baseline; gap: 8px; padding: 6px 8px 16px; }
+  .brand b { font-family: var(--font-display); font-size: 20px; letter-spacing: .02em; }
+  .brand span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .09em; }
+  .nav-btn {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; text-align: left;
+    padding: 9px 10px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--muted); font-weight: 500;
+  }
+  .nav-btn .ct { margin-left: auto; font-size: 12px; color: var(--faint); }
+  .nav-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .nav-btn[aria-current="true"] { background: var(--accent-wash); color: var(--accent); font-weight: 600; }
+  .nav-btn[aria-current="true"] .ct { color: var(--accent); }
+  .side-note {
+    margin-top: auto; padding: 10px; border-radius: 8px;
+    background: var(--surface-2); color: var(--muted);
+    font-size: 11.5px; line-height: 1.45;
+  }
+  .side-note b { color: var(--ink); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    padding: 14px 26px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .rolewrap { display: flex; align-items: center; gap: 12px; }
+  .rolewrap > .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 9px; padding: 3px; gap: 3px; }
+  .seg button {
+    border: 0; background: transparent; border-radius: 6px;
+    padding: 6px 12px; font-weight: 600; color: var(--muted);
+    display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2;
+  }
+  .seg button small { font-weight: 500; font-size: 10.5px; color: var(--faint); text-transform: none; letter-spacing: 0; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+  .seg button[aria-pressed="true"] small { color: var(--muted); }
+  .scope-line { font-size: 12px; color: var(--muted); }
+  .scope-line b { color: var(--ink); font-weight: 600; }
+  .demo-flag {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--warn); background: var(--warn-wash);
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+    padding: 4px 9px; border-radius: 999px;
+  }
+
+  .view { padding: 26px; max-width: 1180px; }
+  .view-head { margin-bottom: 18px; }
+  .view-head h1 { font-size: 23px; }
+  .view-head p { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+
+  /* ---------- chips / pills ---------- */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 11px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line-2);
+    font-size: 12.5px; font-weight: 500;
+  }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .chip.is-crit { background: var(--crit-wash); border-color: color-mix(in srgb, var(--crit) 30%, transparent); color: var(--crit); }
+  .chip.is-crit .dot { background: var(--crit); }
+  .chip.is-warn { background: var(--warn-wash); border-color: color-mix(in srgb, var(--warn) 30%, transparent); color: var(--warn); }
+  .chip.is-warn .dot { background: var(--warn); }
+  .chip.is-ok { background: var(--ok-wash); border-color: color-mix(in srgb, var(--ok) 30%, transparent); color: var(--ok); }
+  .chip.is-ok .dot { background: var(--ok); }
+  .chip b { font-variant-numeric: tabular-nums; }
+
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .01em;
+    background: var(--surface-2); color: var(--muted);
+    border: 1px solid var(--line-2);
+  }
+  .pill.st-NUEVO       { background: var(--accent-wash); color: var(--accent); border-color: transparent; }
+  .pill.st-CONTACTADO  { background: var(--surface-2); color: var(--ink); }
+  .pill.st-SEGUIMIENTO { background: var(--warn-wash); color: var(--warn); border-color: transparent; }
+  .pill.st-CITA        { background: #e7eef6; color: #3a628c; border-color: transparent; }
+  .pill.st-SOCIO       { background: var(--ok-wash); color: var(--ok); border-color: transparent; }
+  .pill.st-PERDIDO     { background: var(--surface-2); color: var(--faint); }
+  :root[data-theme="dark"] .pill.st-CITA,
+  :root:not([data-theme="light"]) .pill.st-CITA { background: #26313d; color: #9fc0e0; }
+
+  /* ---------- panel / card ---------- */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+  /* ---------- bandeja ---------- */
+  .stack { display: flex; flex-direction: column; }
+  .inbox-row {
+    display: grid; grid-template-columns: 4px 128px 1fr 150px 132px;
+    align-items: center; gap: 14px;
+    padding: 13px 16px 13px 0;
+    border-bottom: 1px solid var(--line);
+    background: none; border-left: 0; border-right: 0; border-top: 0;
+    width: 100%; text-align: left;
+  }
+  .inbox-row:last-child { border-bottom: 0; }
+  .inbox-row:hover { background: var(--surface-2); }
+  .inbox-row .sem { align-self: stretch; border-radius: 3px; background: var(--ok); }
+  .inbox-row.sem-crit .sem { background: var(--crit); }
+  .inbox-row.sem-warn .sem { background: var(--warn); }
+  .inbox-when { font-size: 12.5px; }
+  .inbox-when b { display: block; font-weight: 600; }
+  .inbox-when.crit b { color: var(--crit); }
+  .inbox-when.warn b { color: var(--warn); }
+  .inbox-when span { color: var(--faint); }
+  .inbox-who { min-width: 0; }
+  .inbox-who b { font-weight: 600; }
+  .inbox-who span { color: var(--muted); display: block; font-size: 12.5px; }
+  .tag {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+    padding: 2px 7px; border-radius: 6px; background: var(--surface-2);
+    color: var(--muted); border: 1px solid var(--line-2);
+  }
+  .who-mini { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+  .avatar {
+    width: 22px; height: 22px; border-radius: 50%; flex: none;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700; color: var(--accent-ink);
+    background: var(--accent);
+  }
+
+  /* ---------- leads table ---------- */
+  .tablewrap { overflow-x: auto; border-radius: var(--radius); }
+  table.leads { width: 100%; border-collapse: collapse; min-width: 720px; background: var(--surface); }
+  table.leads th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); font-weight: 600;
+    padding: 11px 14px; border-bottom: 1px solid var(--line-2); background: var(--surface-2);
+    position: sticky; top: 0;
+  }
+  table.leads td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.leads tr:last-child td { border-bottom: 0; }
+  table.leads tbody tr:hover td { background: var(--surface-2); }
+  .lead-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .lead-name .code { font-family: var(--font-mono); font-size: 11px; color: var(--faint); font-weight: 400; }
+  .linkish { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; }
+  .linkish:hover .lead-name > span:first-child { text-decoration: underline; text-underline-offset: 2px; }
+  .stale { color: var(--crit); font-weight: 600; }
+  .reassign {
+    font: inherit; font-size: 12.5px; padding: 5px 8px;
+    border: 1px solid var(--line-2); border-radius: 7px;
+    background: var(--surface); color: var(--ink);
+  }
+  .reassign:disabled { opacity: .5; cursor: not-allowed; }
+  .rowlock { font-size: 12px; color: var(--faint); }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin: 0 0 14px; flex-wrap: wrap; }
+  .toolbtn {
+    font: inherit; font-size: 12.5px; font-weight: 600;
+    padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--line-2); background: var(--surface); color: var(--ink);
+  }
+  .toolbtn.accent { border-color: var(--accent); color: var(--accent); }
+  .toolbtn:hover { background: var(--surface-2); }
+  .toolbar .hint { font-size: 12px; color: var(--faint); }
+  .filepick {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px; border-radius: 8px; border: 1px dashed var(--line-2);
+    background: var(--ground); cursor: pointer;
+  }
+  .filepick:hover { border-color: var(--accent); }
+  .filepick-btn {
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--accent); color: var(--accent); background: var(--surface);
+  }
+  .filepick-name { font-family: var(--font-mono); font-size: 12px; color: var(--muted); word-break: break-all; }
+  .filepick-name.set { color: var(--ink); }
+  .imp-hint { font-size: 12.5px; color: var(--muted); margin: 0 0 4px; }
+  .imp-hint b { color: var(--ink); }
+  #impResult { font-size: 12.5px; color: var(--muted); min-height: 18px; }
+  #impResult b { color: var(--ink); }
+  .radio-row { display: flex; gap: 18px; font-size: 12.5px; color: var(--muted); }
+  .radio-row label { display: flex; align-items: center; gap: 6px; }
+
+  /* ---------- tablero ---------- */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px){ .grid2 { grid-template-columns: 1fr; } .app { grid-template-columns: 1fr; } .side { display: none; } }
+  .card-h { padding: 15px 18px 0; }
+  .card-h h3 { font-size: 15px; }
+  .card-h p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+  .card-b { padding: 16px 18px 18px; }
+
+  .funnel { display: flex; flex-direction: column; gap: 11px; }
+  .fbar-label { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; }
+  .fbar-label b { font-variant-numeric: tabular-nums; }
+  .fbar-track { height: 12px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .fbar-fill { height: 100%; border-radius: 999px; background: var(--accent); }
+  .fbar.mut .fbar-fill { background: var(--line-2); }
+  .callout {
+    margin-top: 14px; padding: 11px 13px; border-radius: 8px;
+    background: var(--accent-wash); color: var(--accent);
+    font-size: 12.5px; font-weight: 500;
+  }
+
+  .adbars { display: flex; align-items: flex-end; gap: 10px; height: 120px; padding-top: 6px; }
+  .adbar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+  .adbar .col { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 3px; }
+  .adbar.nodata .col { background: repeating-linear-gradient(45deg, var(--line-2), var(--line-2) 4px, transparent 4px, transparent 8px); border: 1px dashed var(--line-2); }
+  .adbar small { font-size: 10.5px; color: var(--muted); }
+  .adbar .v { font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .adbar.nodata .v { color: var(--warn); font-weight: 600; }
+
+  table.mini { width: 100%; border-collapse: collapse; }
+  table.mini th, table.mini td { padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 12.5px; text-align: right; }
+  table.mini th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  table.mini th:first-child, table.mini td:first-child { text-align: left; }
+  table.mini tr:last-child td { border-bottom: 0; }
+  table.mini td.num { font-variant-numeric: tabular-nums; }
+  table.mini tr.me td { background: var(--accent-wash); }
+  .bar-cell { position: relative; }
+  .bar-cell .mb { position: absolute; left: 6px; right: 6px; bottom: 2px; height: 3px; background: var(--accent); border-radius: 2px; }
+
+  /* ---------- slide-over ---------- */
+  .scrim { position: fixed; inset: 0; background: rgba(20,12,16,.42); opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 40; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; top: 0; right: 0; height: 100%; width: min(460px, 92vw);
+    background: var(--surface); border-left: 1px solid var(--line);
+    box-shadow: -18px 0 40px -20px rgba(20,12,16,.5);
+    transform: translateX(100%); transition: transform .2s ease; z-index: 41;
+    display: flex; flex-direction: column;
+  }
+  .sheet.open { transform: translateX(0); }
+  .sheet-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+  .sheet-head .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .sheet-head h2 { font-size: 18px; }
+  .sheet-head .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .x { border: 0; background: var(--surface-2); width: 30px; height: 30px; border-radius: 8px; font-size: 16px; color: var(--muted); }
+  .x:hover { color: var(--ink); }
+  .sheet-body { padding: 16px 20px 26px; overflow-y: auto; }
+  .kv { display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; font-size: 13px; margin-bottom: 18px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-weight: 500; }
+
+  .tl { position: relative; padding-left: 20px; }
+  .tl::before { content: ""; position: absolute; left: 5px; top: 4px; bottom: 4px; width: 2px; background: var(--line-2); }
+  .tl-item { position: relative; padding: 0 0 16px; }
+  .tl-item::before { content: ""; position: absolute; left: -18px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+  .tl-item.ev::before { border-color: var(--line-2); }
+  .tl-item .t { font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .tl-item .h { font-weight: 600; font-size: 13px; margin: 1px 0; }
+  .tl-item .d { font-size: 12.5px; color: var(--muted); }
+
+  .oppbox { border: 1px solid var(--line-2); border-radius: 9px; padding: 13px; margin-top: 4px; }
+  .oppbox .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .etapa { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--accent); }
+
+  .btn {
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+    padding: 9px 15px; border-radius: 8px; font-weight: 600;
+  }
+  .btn:hover { filter: brightness(1.05); }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+  .btn-wide { width: 100%; margin-top: 14px; text-align: center; }
+
+  /* ---------- modal cerrar venta ---------- */
+  .modal-scrim { position: fixed; inset: 0; background: rgba(20,12,16,.5); display: none; place-items: center; z-index: 50; padding: 20px; }
+  .modal-scrim.open { display: grid; }
+  .modal { background: var(--surface); border-radius: 14px; width: min(560px, 96vw); max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); }
+  .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; }
+  .modal-head h2 { font-size: 18px; }
+  .modal-head span { color: var(--muted); font-size: 12.5px; }
+  .modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 18px; }
+  .fieldset { border: 1px solid var(--line-2); border-radius: 10px; padding: 13px; }
+  .fieldset legend { padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .frow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .frow:last-child { margin-bottom: 0; }
+  .frow label { font-size: 12.5px; color: var(--muted); min-width: 92px; }
+  input[type="number"], input[type="text"], select {
+    font: inherit; font-size: 13px; padding: 7px 9px; border-radius: 7px;
+    border: 1px solid var(--line-2); background: var(--ground); color: var(--ink);
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible, .nav-btn:focus-visible, .inbox-row:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .mini-add { font-size: 12px; padding: 4px 9px; border-radius: 6px; border: 1px dashed var(--line-2); background: transparent; color: var(--muted); }
+  .checkline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); padding: 4px 0; }
+  .checkline .ic { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: #fff; background: var(--crit); flex: none; }
+  .checkline.good .ic { background: var(--ok); }
+  .semaforo {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-top: 1px solid var(--line);
+    font-weight: 700; font-family: var(--font-display);
+  }
+  .semaforo .lamp { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 20%, transparent); }
+  .semaforo.listo { color: var(--ok); }
+  .semaforo.revisar { color: var(--crit); }
+  .semaforo .lamp { background: currentColor; }
+  .modal-foot { padding: 14px 22px 20px; display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
+    background: var(--ink); color: var(--ground);
+    padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+    opacity: 0; pointer-events: none; transition: all .22s; z-index: 60;
+    box-shadow: var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><b>XAMZ</b><span>Ventas</span></div>
+    <button class="nav-btn" data-view="bandeja" aria-current="true">Bandeja <span class="ct" id="nav-bandeja-ct"></span></button>
+    <button class="nav-btn" data-view="leads">Leads <span class="ct" id="nav-leads-ct"></span></button>
+    <button class="nav-btn" data-view="tablero">Tablero</button>
+    <div class="side-note">
+      <b>Vista previa.</b> Datos de ejemplo, todo en tu navegador. En producción es
+      una sola base en la nube: cada quien entra desde
+      <span class="mono">proyectobaleno.pe/xamz/</span> y ve lo que su rol permite —
+      no hay archivos que repartir ni consolidar.
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="rolewrap">
+        <span class="lbl">Viendo como</span>
+        <div class="seg" id="roleseg" role="group" aria-label="Rol de la demo">
+          <button data-role="ASE-01" aria-pressed="true">ILIANA<small>asesora</small></button>
+          <button data-role="ASE-03" aria-pressed="false">LIZ<small>asesora</small></button>
+          <button data-role="FLOR" aria-pressed="false">FLOR<small>jefa comercial</small></button>
+          <button data-role="MKT" aria-pressed="false">Jefa de Marketing<small>ve todo · reasigna</small></button>
+        </div>
+      </div>
+      <div class="scope-line" id="scopeline"></div>
+      <div class="demo-flag">● datos de ejemplo</div>
+    </div>
+
+    <main class="view" id="view"></main>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" aria-hidden="true"></aside>
+
+<div class="modal-scrim" id="modalScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  const HOY = new Date("2026-09-03T09:00:00");
+
+  // ---------- equipo ----------
+  const EQUIPO = {
+    "ASE-01": { nombre: "ILIANA",    alias: "ILI", rol: "ASESORA" },
+    "ASE-02": { nombre: "YNGRID",    alias: "YN",  rol: "ASESORA" },
+    "ASE-03": { nombre: "LIZ",       alias: "LIZ", rol: "ASESORA" },
+    "ASE-04": { nombre: "CAMILA",    alias: "CAM", rol: "ASESORA" },
+    "ASE-05": { nombre: "SEBASTIAN", alias: "SEB", rol: "ASESORA" },
+    "FLOR":   { nombre: "FLOR",      alias: "FL",  rol: "CLOSER"  },
+    "MKT":    { nombre: "Jefa de Marketing", alias: "MK", rol: "MARKETING" }
+  };
+  const ASESORAS_ASIGNABLES = ["ASE-01","ASE-02","ASE-03","ASE-04","ASE-05"];
+
+  // ---------- seed: personas ----------
+  const SEED_PERSONAS = [
+    ["PER-00118","Rosa Quispe Mamani","+51 987 214 556","MARACUYA","SEGUIMIENTO","ASE-01","2026-08-21","WHATSAPP COMERCIAL"],
+    ["PER-00121","Julio Paredes Curo","+51 941 802 337","PITAHAYA","CITA","ASE-01","2026-08-30","FORMULARIO WEB"],
+    ["PER-00124","Esmeralda Paucar y Julio Ríos","+51 962 118 940","MARACUYA","SEGUIMIENTO","ASE-01","2026-08-19","REFERIDO"],
+    ["PER-00131","Hilda Huamán Ccopa","+51 993 447 001","PITAHAYA","CONTACTADO","ASE-01","2026-09-01","FORMULARIO WEB"],
+    ["PER-00140","Marco Antonio Salas","+51 921 664 720","MARACUYA","NUEVO","ASE-01","2026-09-02","CUENTA WILMER"],
+    ["PER-00092","Shirley Mayuri Gómez","+51 988 300 715","PITAHAYA","SOCIO","ASE-01","2026-08-12","EXPO/FERIA"],
+
+    ["PER-00119","Erick Campos Ttito","+51 950 771 208","MARACUYA","CITA","ASE-03","2026-08-31","WHATSAPP COMERCIAL"],
+    ["PER-00126","Dora Ccahuana Puma","+51 977 010 664","PITAHAYA","SEGUIMIENTO","ASE-03","2026-08-16","FORMULARIO WEB"],
+    ["PER-00133","Luis Alberto Ñahui","+51 934 889 152","MARACUYA","CONTACTADO","ASE-03","2026-08-29","REFERIDO"],
+    ["PER-00137","Fabiola Zevallos R.","+51 913 552 448","PITAHAYA","NUEVO","ASE-03","2026-09-02","GRUPO BALENO"],
+    ["PER-00099","Carmen Rosa Lévano","+51 981 233 907","MARACUYA","SOCIO","ASE-03","2026-08-05","REFERIDO"],
+
+    ["PER-00122","Wálter Nina Apaza","+51 967 445 218","PITAHAYA","SEGUIMIENTO","ASE-02","2026-08-24","FORMULARIO WEB"],
+    ["PER-00129","Gladys Ramos Sönke","+51 942 118 663","MARACUYA","CITA","ASE-02","2026-08-28","WHATSAPP COMERCIAL"],
+    ["PER-00135","Óscar Medina Flores","+51 998 774 100","PITAHAYA","CONTACTADO","ASE-02","2026-08-30","CUENTA WILMER"],
+
+    ["PER-00123","Betsabé Cárdenas L.","+51 955 902 471","MARACUYA","SEGUIMIENTO","ASE-04","2026-08-22","EXPO/FERIA"],
+    ["PER-00128","Renzo Gutiérrez Paz","+51 936 610 559","PITAHAYA","CITA","ASE-04","2026-09-01","FORMULARIO WEB"],
+    ["PER-00134","Yesenia Ttica Roque","+51 902 335 887","MARACUYA","NUEVO","ASE-04","2026-09-02","REFERIDO"],
+    ["PER-00101","Grimaldo Ayala Sencia","+51 984 552 019","PITAHAYA","SOCIO","ASE-04","2026-07-30","CUENTA WILMER"],
+
+    ["PER-00120","Nélida Chávez Poma","+51 991 008 254","PITAHAYA","SEGUIMIENTO","ASE-05","2026-08-18","WHATSAPP COMERCIAL"],
+    ["PER-00127","Abel Quintanilla V.","+51 913 774 902","MARACUYA","CITA","ASE-05","2026-08-27","FORMULARIO WEB"],
+    ["PER-00132","Pilar Amanqui Suca","+51 975 220 116","PITAHAYA","CONTACTADO","ASE-05","2026-08-31","GRUPO BALENO"],
+    ["PER-00138","Diego Alarcón Ruiz","+51 946 553 288","MARACUYA","NUEVO","ASE-05","2026-09-02","FORMULARIO WEB"],
+
+    ["PER-00141","Milagros Ríos Tañay","+51 900 774 512","PITAHAYA","NUEVO",null,"2026-09-02","FORMULARIO WEB"],
+    ["PER-00142","Aldo Bautista Rojas","+51 921 006 883","MARACUYA","NUEVO",null,"2026-09-03","FORMULARIO WEB"],
+    ["PER-00143","Corina Espinoza M.","+51 967 330 148","PITAHAYA","NUEVO",null,"2026-09-03","WHATSAPP COMERCIAL"]
+  ].map(r => ({
+    id: r[0], nombre: r[1], telefono: r[2], proyecto: r[3],
+    estado: r[4], asesora: r[5], ultimoContacto: r[6], canal: r[7]
+  }));
+
+  // ---------- seed: citas (pendientes / la bandeja) ----------
+  const SEED_CITAS = [
+    ["CIT-0210","PER-00124","ASE-01","ZOOM",     "2026-08-29T17:00", "PENDIENTE"],
+    ["CIT-0214","PER-00121","ASE-01","OFICINA",  "2026-09-03T11:00", "PENDIENTE"],
+    ["CIT-0217","PER-00118","ASE-01","LLAMADA",  "2026-09-04T09:30", "PENDIENTE"],
+    ["CIT-0219","PER-00140","ASE-01","LLAMADA",  "2026-09-02T16:00", "PENDIENTE"],
+    ["CIT-0211","PER-00119","ASE-03","ZOOM",     "2026-09-01T18:00", "PENDIENTE"],
+    ["CIT-0215","PER-00126","ASE-03","LLAMADA",  "2026-09-03T15:00", "PENDIENTE"],
+    ["CIT-0218","PER-00133","ASE-03","OFICINA",  "2026-09-05T10:00", "PENDIENTE"],
+    ["CIT-0212","PER-00129","ASE-02","ZOOM",     "2026-08-28T19:00", "PENDIENTE"],
+    ["CIT-0216","PER-00135","ASE-02","LLAMADA",  "2026-09-03T12:30", "PENDIENTE"],
+    ["CIT-0213","PER-00128","ASE-04","CAMPO",    "2026-09-06T08:00", "PENDIENTE"],
+    ["CIT-0220","PER-00123","ASE-04","LLAMADA",  "2026-09-02T11:00", "PENDIENTE"],
+    ["CIT-0221","PER-00127","ASE-05","OFICINA",  "2026-09-04T16:30", "PENDIENTE"],
+    ["CIT-0222","PER-00120","ASE-05","LLAMADA",  "2026-08-30T10:00", "PENDIENTE"]
+  ].map(r => ({ id: r[0], persona: r[1], asesora: r[2], tipo: r[3], inicio: r[4], estado: r[5] }));
+
+  // ---------- seed: timelines por persona (para la ficha) ----------
+  const TL = {
+    "PER-00121": [
+      { t: "2026-08-24 10:12", tipo: "int",  h: "Llamada · contestó", d: "Pidió el brochure de pitahaya y la proyección a 15 años. Interesado, decide con la esposa." },
+      { t: "2026-08-27 16:40", tipo: "int",  h: "WhatsApp · envió info", d: "Se mandó proyección financiera + testimonios." },
+      { t: "2026-08-30 09:05", tipo: "ev",   h: "Estado → CITA AGENDADA", d: "" },
+      { t: "2026-09-03 11:00", tipo: "cita", h: "Cita OFICINA (pendiente)", d: "Viene con la esposa a la oficina de San Isidro. Recordatorio a las 09:00." }
+    ],
+    "PER-00124": [
+      { t: "2026-08-14 11:20", tipo: "int",  h: "Llamada · contestó", d: "Pareja comprando junta (Esmeralda + Julio). Quieren 2 lotes de maracuyá." },
+      { t: "2026-08-19 15:00", tipo: "int",  h: "Llamada · no contestó", d: "" },
+      { t: "2026-08-22 12:30", tipo: "int",  h: "WhatsApp · coordinó zoom", d: "Agendan zoom para el 29." },
+      { t: "2026-08-29 17:00", tipo: "cita", h: "Cita ZOOM — VENCIDA sin desenlace", d: "No se registró si se conectaron. Hay que llamar y marcar el resultado." }
+    ]
+  };
+
+  // ---------- oportunidades (para cierre) ----------
+  const OPPS = {
+    "PER-00092": { etapa: "GANADA",      proyecto: "PITAHAYA", asesora: "ASE-01", nota: "Cerró tras visita al fundo. Falta registrar la venta." },
+    "PER-00124": { etapa: "NEGOCIACION", proyecto: "MARACUYA", asesora: "ASE-01", nota: "2 lotes, pareja. Pendiente el zoom vencido." },
+    "PER-00099": { etapa: "GANADA",      proyecto: "MARACUYA", asesora: "ASE-03", nota: "Referida de socia. Lista para registrar." }
+  };
+
+  // ---------- publicidad ----------
+  const PUB = [
+    { m: "Ene", v: 48975 }, { m: "Feb", v: 46589 }, { m: "Mar", v: 35123 },
+    { m: "Abr", v: 49595 }, { m: "May", v: 40610 }, { m: "Jun", v: 52233 },
+    { m: "Jul", v: null }, { m: "Ago", v: null }
+  ];
+
+  // ---------- comisiones / metas (demo) ----------
+  const METAS = {
+    "ASE-01": { meta: 6, cerrados: 5 }, "ASE-02": { meta: 6, cerrados: 3 },
+    "ASE-03": { meta: 6, cerrados: 7 }, "ASE-04": { meta: 6, cerrados: 4 },
+    "ASE-05": { meta: 6, cerrados: 4 }
+  };
+  const COMISION_LOTE = 200;
+
+  // ---------- state ----------
+  const LS_KEY = "xamz-demo-v1";
+  let state = load();
+  let role = "ASE-01";
+  let currentView = "bandeja";
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { personas: SEED_PERSONAS.map(p => ({ ...p })), ventas: [] };
+  }
+  function save() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  // ---------- helpers ----------
+  const $  = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const soles = n => "S/ " + n.toLocaleString("es-PE");
+  const veTodo = () => role === "FLOR" || role === "MKT";
+  const puedeReasignar = () => role === "MKT" || role === "FLOR";
+  const initials = code => {
+    if (!code) return "?";
+    const e = EQUIPO[code];
+    return e ? e.alias.slice(0, 2) : "?";
+  };
+  const nombreAses = code => code ? EQUIPO[code].nombre : "sin asignar";
+
+  function dayDiff(iso) {
+    const d = new Date(iso);
+    return Math.round((d - HOY) / 86400000);
+  }
+  function citaUrgencia(iso) {
+    const d = new Date(iso);
+    if (d < HOY) return "crit";
+    if (d - HOY < 36 * 3600000) return "warn";
+    return "ok";
+  }
+  function fmtWhen(iso) {
+    const d = new Date(iso);
+    const diff = dayDiff(iso);
+    const hhmm = d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", hour12: false });
+    let rel;
+    if (d < HOY) {
+      const dd = Math.ceil((HOY - d) / 86400000);
+      rel = "vencida hace " + dd + (dd === 1 ? " día" : " días");
+    } else if (diff === 0) rel = "hoy " + hhmm;
+    else if (diff === 1) rel = "mañana " + hhmm;
+    else rel = "en " + diff + " días";
+    return rel;
+  }
+  function fechaCorta(iso) {
+    return new Date(iso).toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
+  }
+  function staleDays(iso) {
+    return Math.round((HOY - new Date(iso)) / 86400000);
+  }
+
+  function visiblePersonas() {
+    return state.personas.filter(p => veTodo() || p.asesora === role);
+  }
+  function visibleCitas() {
+    return SEED_CITAS
+      .filter(c => veTodo() || c.asesora === role)
+      .filter(c => c.estado === "PENDIENTE")
+      .slice()
+      .sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
+  }
+  const estClass = e => ({
+    NUEVO: "st-NUEVO", CONTACTADO: "st-CONTACTADO", SEGUIMIENTO: "st-SEGUIMIENTO",
+    CITA: "st-CITA", SOCIO: "st-SOCIO", PERDIDO: "st-PERDIDO"
+  }[e] || "");
+  const estLabel = e => ({
+    NUEVO: "Nuevo", CONTACTADO: "Contactado", SEGUIMIENTO: "En seguimiento",
+    CITA: "Cita agendada", SOCIO: "Socio", PERDIDO: "Perdido"
+  }[e] || e);
+
+  // ---------- importador de CSV ----------
+  const DIACRITICS = /[̀-ͯ]/g;
+  const strip = s => String(s || "").toLowerCase().normalize("NFD").replace(DIACRITICS, "");
+  const normHeader = s => strip(s).replace(/[^a-z0-9]/g, "");
+  const digits = s => String(s || "").replace(/\D/g, "");
+  function fmtPhone(raw) {
+    const d = digits(raw);
+    const n = d.length > 9 ? d.slice(-9) : d;
+    if (n.length === 9) return "+51 " + n.slice(0, 3) + " " + n.slice(3, 6) + " " + n.slice(6);
+    return String(raw || "").trim();
+  }
+  const ALIAS = {
+    ili: "ASE-01", iliana: "ASE-01",
+    yn: "ASE-02", yngrid: "ASE-02", ingrid: "ASE-02",
+    liz: "ASE-03",
+    cam: "ASE-04", cami: "ASE-04", camila: "ASE-04",
+    seb: "ASE-05", sebas: "ASE-05", sebastian: "ASE-05"
+  };
+  const aliasToAsesora = raw => ALIAS[strip(raw).replace(/[^a-z]/g, "")] || null;
+  function normProyecto(raw) {
+    const p = strip(raw);
+    if (p.includes("mara")) return "MARACUYA";
+    if (p.includes("pita") || p.includes("pitaj")) return "PITAHAYA";
+    if (p.includes("ambos") || p.includes("dos cultiv")) return "AMBOS";
+    if (p.includes("reinv")) return "REINVERSION";
+    return null;
+  }
+  function normEstado(raw) {
+    const p = strip(raw);
+    if (!p) return "NUEVO";
+    if (p.includes("socio") || p.includes("cerr") || p.includes("gana")) return "SOCIO";
+    if (p.includes("perd") || p.includes("descart") || p.includes("no interes")) return "PERDIDO";
+    if (p.includes("cita") || p.includes("agenda") || p.includes("zoom")) return "CITA";
+    if (p.includes("seguim") || p.includes("proceso") || p.includes("negoci")) return "SEGUIMIENTO";
+    if (p.includes("contact")) return "CONTACTADO";
+    return "NUEVO";
+  }
+  function parseCSV(text) {
+    const lines = String(text).replace(/\r\n?/g, "\n").split("\n").filter(l => l.trim().length);
+    if (!lines.length) return { headers: [], rows: [] };
+    const semi = (lines[0].match(/;/g) || []).length;
+    const comma = (lines[0].match(/,/g) || []).length;
+    const tab = (lines[0].match(/\t/g) || []).length;
+    const delim = tab > semi && tab > comma ? "\t" : (semi >= comma ? ";" : ",");
+    const parseLine = line => {
+      const out = []; let cur = "", q = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (q) {
+          if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+          else cur += ch;
+        } else {
+          if (ch === '"') q = true;
+          else if (ch === delim) { out.push(cur); cur = ""; }
+          else cur += ch;
+        }
+      }
+      out.push(cur);
+      return out.map(s => s.trim());
+    };
+    return { headers: parseLine(lines[0]).map(normHeader), rows: lines.slice(1).map(parseLine) };
+  }
+  function findCol(headers, cands) {
+    for (const c of cands) { const i = headers.indexOf(c); if (i >= 0) return i; }
+    for (let i = 0; i < headers.length; i++) if (cands.some(c => headers[i].includes(c))) return i;
+    return -1;
+  }
+  function maxPerNum() {
+    return state.personas.reduce((m, p) => {
+      const n = parseInt(String(p.id).replace(/\D/g, ""), 10);
+      return isNaN(n) ? m : Math.max(m, n);
+    }, 117);
+  }
+
+  function openImport() {
+    $("#modal").innerHTML = `
+      <div class="modal-head">
+        <h2 id="modalTitle">Importar leads desde CSV</h2>
+        <span>el export de <b>LLAMADAS 2026</b> o similar, en <b>.csv</b></span>
+      </div>
+      <div class="modal-body">
+        <p class="imp-hint">Reconoce las columnas <b>nombre</b> y <b>teléfono</b> (obligatorias), y si están:
+          proyecto, asesora, estado, canal. Delimitador <b>,</b> o <b>;</b>. La asesora se resuelve por alias
+          (ILI, CAMI, GRACI…); las que no matcheen caen en “por reasignar”.</p>
+        <label class="filepick" id="filePick">
+          <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" hidden>
+          <span class="filepick-btn">Elegir archivo…</span>
+          <span class="filepick-name" id="fileName">ningún archivo seleccionado</span>
+        </label>
+        <div class="radio-row" style="margin-top:12px">
+          <label><input type="radio" name="impmode" value="append" checked> Agregar a los ejemplos</label>
+          <label><input type="radio" name="impmode" value="replace"> Reemplazar todo</label>
+        </div>
+        <p class="imp-hint" style="margin-top:6px">“Agregar” conserva los 3 leads de ejemplo con oportunidad, para poder mostrar el cierre de venta.</p>
+        <div id="impResult"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close-modal>Cancelar</button>
+        <button class="btn" id="doImport" disabled>Importar</button>
+      </div>`;
+    $$('#modal [data-close-modal]').forEach(b => b.addEventListener("click", closeModal));
+    const file = $("#csvFile");
+    file.addEventListener("change", () => {
+      const f = file.files[0];
+      const name = $("#fileName");
+      name.textContent = f ? f.name : "ningún archivo seleccionado";
+      name.classList.toggle("set", !!f);
+      $("#doImport").disabled = !f;
+      $("#impResult").textContent = "";
+    });
+    $("#doImport").addEventListener("click", runImport);
+    $("#modalScrim").classList.add("open");
+  }
+
+  function runImport() {
+    const f = ($("#csvFile").files || [])[0];
+    if (!f) { $("#impResult").innerHTML = "Elegí un archivo <b>.csv</b> primero."; return; }
+    $("#impResult").textContent = "Leyendo " + f.name + "…";
+    const reader = new FileReader();
+    reader.onerror = () => { $("#impResult").innerHTML = "No se pudo leer el archivo."; };
+    reader.onload = () => importarTexto(String(reader.result || ""));
+    reader.readAsText(f, "utf-8");
+  }
+
+  function importarTexto(text) {
+    const { headers, rows } = parseCSV(text);
+    if (!rows.length) { $("#impResult").innerHTML = "El archivo no tiene filas de datos (¿solo la fila de encabezados?)."; return; }
+    const ci = {
+      nombre: findCol(headers, ["nombre", "nombres", "cliente", "nombrecompleto", "nombreyapellido", "apellidosynombres", "apellidosnombres"]),
+      telefono: findCol(headers, ["telefono", "celular", "cel", "numero", "nrocelular", "telf", "fono", "whatsapp", "movil"]),
+      proyecto: findCol(headers, ["proyecto", "cultivo", "interes", "proyectointeres"]),
+      asesora: findCol(headers, ["asesora", "asesor", "ejecutiva", "vendedora", "closer", "comercial"]),
+      estado: findCol(headers, ["estado", "situacion", "etapa", "resultado"]),
+      canal: findCol(headers, ["canal", "medio", "fuente", "origen", "captacion"])
+    };
+    if (ci.nombre < 0 || ci.telefono < 0) {
+      $("#impResult").innerHTML = "No encontré columna de <b>nombre</b> y/o <b>teléfono</b>. Encabezados leídos: <span class='mono'>" + esc(headers.join(", ")) + "</span>";
+      return;
+    }
+    const mode = ($("input[name=impmode]:checked") || {}).value || "append";
+    const keepIds = ["PER-00092", "PER-00124", "PER-00099"];
+    let base = mode === "replace"
+      ? state.personas.filter(p => keepIds.includes(p.id))
+      : state.personas.slice();
+    if (mode === "replace") state.ventas = [];
+    let n = maxPerNum();
+    const seen = new Set(base.map(p => digits(p.telefono).slice(-9)).filter(Boolean));
+    let added = 0, dup = 0, sinAses = 0;
+    for (const r of rows) {
+      const nombre = (r[ci.nombre] || "").trim();
+      if (!nombre) continue;
+      const tel9 = digits(r[ci.telefono]).slice(-9);
+      if (tel9 && tel9.length >= 6 && seen.has(tel9)) { dup++; continue; }
+      if (tel9) seen.add(tel9);
+      const ase = ci.asesora >= 0 ? aliasToAsesora(r[ci.asesora]) : null;
+      if (!ase) sinAses++;
+      n++;
+      base.push({
+        id: "PER-" + String(n).padStart(5, "0"),
+        nombre,
+        telefono: fmtPhone(r[ci.telefono]),
+        proyecto: ci.proyecto >= 0 ? normProyecto(r[ci.proyecto]) : null,
+        estado: ci.estado >= 0 ? normEstado(r[ci.estado]) : "NUEVO",
+        asesora: ase,
+        ultimoContacto: "2026-09-03",
+        canal: ci.canal >= 0 && r[ci.canal] ? String(r[ci.canal]).toUpperCase().slice(0, 40) : "IMPORTADO"
+      });
+      added++;
+    }
+    state.personas = base;
+    save();
+    $("#impResult").innerHTML = `Cargados <b>${added}</b> leads · ${dup} duplicados por teléfono omitidos · <b>${sinAses}</b> sin asesora → caen en “por reasignar”.`;
+    const old = $("#doImport");
+    const fresh = old.cloneNode(true);          // descarta el listener de runImport
+    fresh.textContent = "Ver leads";
+    old.replaceWith(fresh);
+    fresh.addEventListener("click", () => { closeModal(); currentView = "leads"; render(); toast(added + " leads importados"); });
+  }
+
+  function restaurarEjemplo() {
+    state = { personas: SEED_PERSONAS.map(p => ({ ...p })), ventas: [] };
+    save();
+    render();
+    toast("Datos de ejemplo restaurados");
+  }
+
+  // ---------- render: bandeja ----------
+  function renderBandeja() {
+    const citas = visibleCitas();
+    const nCrit = citas.filter(c => citaUrgencia(c.inicio) === "crit").length;
+    const nWarn = citas.filter(c => citaUrgencia(c.inicio) === "warn").length;
+    const nOk   = citas.length - nCrit - nWarn;
+
+    const rows = citas.map(c => {
+      const p = state.personas.find(x => x.id === c.persona) || { nombre: "—", telefono: "" };
+      const u = citaUrgencia(c.inicio);
+      const cls = u === "crit" ? "sem-crit" : u === "warn" ? "sem-warn" : "";
+      return `<button class="inbox-row ${cls}" data-persona="${c.persona}">
+        <span class="sem"></span>
+        <span class="inbox-when ${u === "ok" ? "" : u}">
+          <b>${esc(fmtWhen(c.inicio))}</b>
+          <span>${esc(fechaCorta(c.inicio))}</span>
+        </span>
+        <span class="inbox-who">
+          <b>${esc(p.nombre)}</b>
+          <span>${esc(p.telefono)} · <span class="mono">${esc(c.persona)}</span></span>
+        </span>
+        <span><span class="tag">${c.tipo}</span></span>
+        <span class="who-mini"><span class="avatar">${initials(c.asesora)}</span>${esc(EQUIPO[c.asesora].nombre)}</span>
+      </button>`;
+    }).join("");
+
+    return `
+      <div class="view-head">
+        <h1>Bandeja</h1>
+        <p>Lo primero que se abre cada mañana. Ordenado por urgencia, no por fecha de registro: lo vencido va arriba.</p>
+      </div>
+      <div class="chips">
+        <span class="chip ${nCrit ? "is-crit" : ""}"><span class="dot"></span><b>${nCrit}</b> vencidas</span>
+        <span class="chip ${nWarn ? "is-warn" : ""}"><span class="dot"></span><b>${nWarn}</b> hoy / mañana</span>
+        <span class="chip is-ok"><span class="dot"></span><b>${nOk}</b> esta semana</span>
+      </div>
+      <div class="panel"><div class="stack">${rows || '<div style="padding:26px;color:var(--muted)">Sin citas pendientes en tu bandeja.</div>'}</div></div>`;
+  }
+
+  // ---------- render: leads ----------
+  function renderLeads() {
+    const total = state.personas.length;
+    const vis = visiblePersonas();
+    const body = vis.map(p => {
+      const dias = staleDays(p.ultimoContacto);
+      const staleCls = dias >= 10 ? "stale" : "";
+      const reAssign = puedeReasignar()
+        ? `<select class="reassign" data-persona="${p.id}" aria-label="Reasignar ${esc(p.nombre)}">
+             <option value="">— sin asignar —</option>
+             ${ASESORAS_ASIGNABLES.map(a => `<option value="${a}" ${p.asesora === a ? "selected" : ""}>${EQUIPO[a].nombre}</option>`).join("")}
+           </select>`
+        : `<span class="rowlock">${esc(nombreAses(p.asesora))}</span>`;
+      return `<tr>
+        <td>
+          <button class="linkish" data-persona="${p.id}">
+            <span class="lead-name"><span>${esc(p.nombre)}</span><span class="code">${esc(p.id)}</span></span>
+          </button>
+        </td>
+        <td class="num">${esc(p.telefono)}</td>
+        <td>${p.proyecto ? `<span class="tag">${p.proyecto}</span>` : "—"}</td>
+        <td><span class="pill ${estClass(p.estado)}">${esc(estLabel(p.estado))}</span></td>
+        <td class="num ${staleCls}">${dias === 0 ? "hoy" : "hace " + dias + " d"}</td>
+        <td>${reAssign}</td>
+      </tr>`;
+    }).join("");
+
+    return `
+      <div class="view-head">
+        <h1>Leads</h1>
+        <p>${veTodo()
+          ? "Como jefa ves <b>todos</b> los leads del equipo, en vivo. Podés reasignar cualquiera a otra asesora."
+          : "Como asesora ves <b>solo tus leads</b>. La reasignación la hacen Marketing o la jefa comercial."}</p>
+      </div>
+      <div class="toolbar">
+        <button class="toolbtn accent" id="btnImport">Importar CSV</button>
+        <button class="toolbtn" id="btnRestore">Restaurar ejemplo</button>
+        <span class="hint">en producción, el CSV de Meta lo sube Marketing</span>
+      </div>
+      <div class="chips">
+        <span class="chip"><span class="dot" style="background:var(--accent)"></span>
+          Mostrando <b>${vis.length}</b> de <b>${total}</b> leads
+        </span>
+        ${veTodo() ? `<span class="chip"><span class="dot"></span><b>${state.personas.filter(p => !p.asesora).length}</b> por reasignar</span>` : ""}
+      </div>
+      <div class="panel tablewrap">
+        <table class="leads">
+          <thead><tr>
+            <th>Persona</th><th>Teléfono</th><th>Proyecto</th><th>Estado</th><th>Últ. contacto</th>
+            <th>${puedeReasignar() ? "Asesora (reasignar)" : "Asesora"}</th>
+          </tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ---------- render: tablero ----------
+  function renderTablero() {
+    const scope = veTodo() ? "todo el equipo" : EQUIPO[role].nombre;
+    const canales = [
+      { k: "Vino a oficina", pct: 76.3, mut: false },
+      { k: "Tuvo Zoom",      pct: 66.1, mut: false },
+      { k: "Fue a campo",    pct: 44.4, mut: false },
+      { k: "Ninguno de los tres", pct: 3.5, mut: true }
+    ];
+    const maxPub = Math.max(...PUB.map(p => p.v || 0));
+
+    const metaRows = ASESORAS_ASIGNABLES.map(a => {
+      const m = METAS[a];
+      const pct = Math.round((m.cerrados / m.meta) * 100);
+      const com = m.cerrados >= m.meta ? m.cerrados * COMISION_LOTE * 1.2 : m.cerrados * COMISION_LOTE;
+      const mine = (a === role);
+      return `<tr class="${mine ? "me" : ""}">
+        <td>${EQUIPO[a].nombre}</td>
+        <td class="num">${m.cerrados}/${m.meta}</td>
+        <td class="num bar-cell">${pct}%<span class="mb" style="width:${Math.min(pct, 100)}%"></span></td>
+        <td class="num">${soles(com)}</td>
+      </tr>`;
+    }).join("");
+
+    return `
+      <div class="view-head">
+        <h1>Tablero</h1>
+        <p>Todo calculado de los mismos registros — ningún número se teclea. Alcance: <b>${esc(scope)}</b>.</p>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <div class="card-h"><h3>Convierte sentarse frente al cliente</h3>
+            <p>Cierre según si hubo encuentro. Enero–agosto.</p></div>
+          <div class="card-b">
+            <div class="funnel">
+              ${canales.map(c => `
+                <div class="fbar ${c.mut ? "mut" : ""}">
+                  <div class="fbar-label"><span>${c.k}</span><b>${c.pct}%</b></div>
+                  <div class="fbar-track"><div class="fbar-fill" style="width:${c.pct}%"></div></div>
+                </div>`).join("")}
+            </div>
+            <div class="callout">Un zoom o una visita a oficina convierte ~19× más que no tener ninguno.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="card-h"><h3>Gasto de publicidad</h3>
+            <p>Meta (FB/IG), en soles por mes.</p></div>
+          <div class="card-b">
+            <div class="adbars">
+              ${PUB.map(p => {
+                const h = p.v == null ? 30 : Math.max(6, Math.round((p.v / maxPub) * 100));
+                return `<div class="adbar ${p.v == null ? "nodata" : ""}">
+                  <span class="v">${p.v == null ? "sin dato" : (p.v / 1000).toFixed(0) + "k"}</span>
+                  <div class="col" style="height:${h}%"></div>
+                  <small>${p.m}</small>
+                </div>`;
+              }).join("")}
+            </div>
+            <div class="callout" style="background:var(--warn-wash);color:var(--warn)">
+              Julio hizo 71 lotes y nadie anotó el gasto. El tablero muestra el hueco, no un cero.
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="grid-column:1/-1">
+          <div class="card-h"><h3>Metas y comisión estimada</h3>
+            <p>${veTodo() ? "El equipo completo." : "Tu fila está resaltada."} Bono si se llega a la meta.</p></div>
+          <div class="card-b">
+            <table class="mini">
+              <thead><tr><th>Asesora</th><th>Lotes / meta</th><th>Avance</th><th>Comisión est.</th></tr></thead>
+              <tbody>${metaRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ---------- render: ficha (slide-over) ----------
+  function openFicha(personaId) {
+    const p = state.personas.find(x => x.id === personaId);
+    if (!p) return;
+    const tl = TL[personaId];
+    const opp = OPPS[personaId];
+    const venta = state.ventas.find(v => v.persona === personaId);
+
+    const tlHtml = tl
+      ? `<div class="tl">${tl.map(e => `
+          <div class="tl-item ${e.tipo === "ev" ? "ev" : ""}">
+            <div class="t">${esc(e.t)}</div>
+            <div class="h">${esc(e.h)}</div>
+            ${e.d ? `<div class="d">${esc(e.d)}</div>` : ""}
+          </div>`).join("")}</div>`
+      : `<p style="color:var(--muted);font-size:13px">Sin interacciones registradas todavía.</p>`;
+
+    let oppHtml = "";
+    if (venta) {
+      oppHtml = `<div class="oppbox"><div class="row">
+        <span><span class="etapa">VENTA REGISTRADA</span> · <span class="mono">${esc(venta.id)}</span></span>
+        <span class="pill st-SOCIO">${venta.lotes} lote(s) · ${soles(venta.total)}</span>
+      </div></div>`;
+    } else if (opp) {
+      const cerrable = opp.etapa === "GANADA";
+      oppHtml = `<div class="oppbox">
+        <div class="row">
+          <span class="etapa">Oportunidad · ${opp.etapa}</span>
+          <span class="tag">${opp.proyecto}</span>
+        </div>
+        <p style="margin:8px 0 0;font-size:12.5px;color:var(--muted)">${esc(opp.nota)}</p>
+        <button class="btn btn-wide" id="btnCerrar" ${cerrable ? "" : "disabled"}>
+          ${cerrable ? "Cerrar venta" : "Aún en " + opp.etapa.toLowerCase()}
+        </button>
+      </div>`;
+    }
+
+    $("#sheet").innerHTML = `
+      <div class="sheet-head">
+        <div class="row">
+          <div>
+            <h2>${esc(p.nombre)}</h2>
+            <div class="sub"><span class="mono">${esc(p.id)}</span> · ${esc(p.telefono)}</div>
+          </div>
+          <button class="x" id="sheetClose" aria-label="Cerrar">✕</button>
+        </div>
+      </div>
+      <div class="sheet-body">
+        <dl class="kv">
+          <dt>Estado</dt><dd><span class="pill ${estClass(p.estado)}">${esc(estLabel(p.estado))}</span></dd>
+          <dt>Proyecto</dt><dd>${p.proyecto || "—"}</dd>
+          <dt>Canal</dt><dd>${esc(p.canal)}</dd>
+          <dt>Asesora</dt><dd>${esc(nombreAses(p.asesora))}</dd>
+          <dt>Últ. contacto</dt><dd>${fechaCorta(p.ultimoContacto)} · hace ${staleDays(p.ultimoContacto)} días</dd>
+        </dl>
+        ${oppHtml}
+        <h3 style="font-size:14px;margin:20px 0 10px">Línea de tiempo</h3>
+        ${tlHtml}
+      </div>`;
+
+    $("#sheet").setAttribute("aria-hidden", "false");
+    $("#sheet").classList.add("open");
+    $("#scrim").classList.add("open");
+    $("#sheetClose").addEventListener("click", closeSheet);
+    const bc = $("#btnCerrar");
+    if (bc && !bc.disabled) bc.addEventListener("click", () => openCierre(personaId));
+  }
+  function closeSheet() {
+    $("#sheet").classList.remove("open");
+    $("#sheet").setAttribute("aria-hidden", "true");
+    $("#scrim").classList.remove("open");
+  }
+
+  // ---------- modal: cerrar venta ----------
+  function openCierre(personaId) {
+    const p = state.personas.find(x => x.id === personaId);
+    const opp = OPPS[personaId];
+    const cv = {
+      lotes: [{ codigo: "", area: "" }],
+      precioPorLote: 12900,
+      titulares: [{ nombre: p.nombre, pct: 100 }],
+      cuotas: [{ concepto: "INICIAL", monto: "" }]
+    };
+
+    function calc() {
+      const nLotes = cv.lotes.filter(l => l.codigo.trim()).length;
+      const precioTotal = nLotes * (Number(cv.precioPorLote) || 0);
+      const sumPct = cv.titulares.reduce((s, t) => s + (Number(t.pct) || 0), 0);
+      const sumCuotas = cv.cuotas.reduce((s, c) => s + (Number(c.monto) || 0), 0);
+      const okLotes = nLotes >= 1;
+      const okTit = Math.abs(sumPct - 100) < 0.01;
+      const okCuadre = precioTotal > 0 && Math.abs(precioTotal - sumCuotas) < 0.01;
+      return { nLotes, precioTotal, sumPct, sumCuotas, okLotes, okTit, okCuadre, listo: okLotes && okTit && okCuadre };
+    }
+
+    function refresh() {
+      const c = calc();
+      $("#cv-total").textContent = "Total: " + soles(c.precioTotal);
+      const ts = $("#cv-titsuma");
+      ts.textContent = "suma: " + c.sumPct + "%";
+      ts.style.color = c.okTit ? "var(--ok)" : "var(--crit)";
+      const qs = $("#cv-cuosuma");
+      qs.textContent = "cronograma: " + soles(c.sumCuotas) + (c.okCuadre ? " · cuadra" : " · descuadre de " + soles(Math.abs(c.precioTotal - c.sumCuotas)));
+      qs.style.color = c.okCuadre ? "var(--ok)" : "var(--crit)";
+      $("#cv-checks").innerHTML = `
+        <div class="checkline ${c.okLotes ? "good" : ""}"><span class="ic">${c.okLotes ? "✓" : "!"}</span> Al menos un lote con código</div>
+        <div class="checkline ${c.okTit ? "good" : ""}"><span class="ic">${c.okTit ? "✓" : "!"}</span> Titulares suman 100%</div>
+        <div class="checkline ${c.okCuadre ? "good" : ""}"><span class="ic">${c.okCuadre ? "✓" : "!"}</span> Inicial + cuotas = precio total</div>`;
+      const sem = $("#cv-semaforo");
+      sem.className = "semaforo " + (c.listo ? "listo" : "revisar");
+      sem.innerHTML = `<span class="lamp"></span>${c.listo ? "LISTO para guardar" : "REVISAR — no se guarda media venta"}`;
+      $("#guardarVenta").disabled = !c.listo;
+    }
+
+    function draw() {
+      $("#modal").innerHTML = `
+        <div class="modal-head">
+          <h2 id="modalTitle">Cerrar venta</h2>
+          <span>${esc(p.nombre)} · <span class="mono">${esc(personaId)}</span> · ${opp.proyecto}</span>
+        </div>
+        <div class="modal-body">
+          <fieldset class="fieldset">
+            <legend>Lotes</legend>
+            ${cv.lotes.map((l, i) => `
+              <div class="frow">
+                <label>Lote ${i + 1}</label>
+                <input type="text" data-k="lote-codigo" data-i="${i}" placeholder="Código (p. ej. MAR-B-014)" value="${esc(l.codigo)}" style="width:180px">
+                <input type="number" data-k="lote-area" data-i="${i}" placeholder="m²" value="${l.area}" style="width:90px">
+              </div>`).join("")}
+            <button class="mini-add" data-add="lote">+ agregar lote</button>
+          </fieldset>
+
+          <div class="frow">
+            <label>Precio por lote</label>
+            <input type="number" data-k="precio" value="${cv.precioPorLote}" style="width:120px"> <span style="color:var(--muted);font-size:12.5px">S/</span>
+            <span style="margin-left:auto;font-weight:600" class="num" id="cv-total"></span>
+          </div>
+
+          <fieldset class="fieldset">
+            <legend>Titulares · deben sumar 100%</legend>
+            ${cv.titulares.map((t, i) => `
+              <div class="frow">
+                <input type="text" data-k="tit-nombre" data-i="${i}" value="${esc(t.nombre)}" style="flex:1;min-width:160px">
+                <input type="number" data-k="tit-pct" data-i="${i}" value="${t.pct}" style="width:70px"> <span style="color:var(--muted);font-size:12.5px">%</span>
+              </div>`).join("")}
+            <button class="mini-add" data-add="tit">+ agregar titular</button>
+            <div style="text-align:right;font-size:12.5px;margin-top:6px" id="cv-titsuma"></div>
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend>Cronograma · debe cuadrar con el total</legend>
+            ${cv.cuotas.map((q, i) => `
+              <div class="frow">
+                <select data-k="cuo-concepto" data-i="${i}">
+                  ${["SEPARACION","INICIAL","CUOTA","CONTADO","EXTRA"].map(o => `<option ${q.concepto === o ? "selected" : ""}>${o}</option>`).join("")}
+                </select>
+                <input type="number" data-k="cuo-monto" data-i="${i}" placeholder="monto" value="${q.monto}" style="width:120px"> <span style="color:var(--muted);font-size:12.5px">S/</span>
+              </div>`).join("")}
+            <button class="mini-add" data-add="cuo">+ agregar cuota</button>
+            <div style="text-align:right;font-size:12.5px;margin-top:6px" id="cv-cuosuma"></div>
+          </fieldset>
+
+          <div id="cv-checks"></div>
+        </div>
+        <div class="semaforo revisar" id="cv-semaforo"></div>
+        <div class="modal-foot">
+          <button class="btn ghost" data-close-modal>Cancelar</button>
+          <button class="btn" id="guardarVenta" disabled>Guardar venta</button>
+        </div>`;
+
+      $$("#modal input, #modal select").forEach(el => {
+        const ev = el.tagName === "SELECT" ? "change" : "input";
+        el.addEventListener(ev, () => {
+          const k = el.dataset.k, i = +el.dataset.i;
+          if (k === "precio") cv.precioPorLote = el.value;
+          else if (k === "lote-codigo") cv.lotes[i].codigo = el.value;
+          else if (k === "lote-area") cv.lotes[i].area = el.value;
+          else if (k === "tit-nombre") cv.titulares[i].nombre = el.value;
+          else if (k === "tit-pct") cv.titulares[i].pct = el.value;
+          else if (k === "cuo-concepto") cv.cuotas[i].concepto = el.value;
+          else if (k === "cuo-monto") cv.cuotas[i].monto = el.value;
+          refresh();
+        });
+      });
+      $$('#modal [data-add]').forEach(b => b.addEventListener("click", () => {
+        const t = b.dataset.add;
+        if (t === "lote") cv.lotes.push({ codigo: "", area: "" });
+        if (t === "tit") cv.titulares.push({ nombre: "", pct: 0 });
+        if (t === "cuo") cv.cuotas.push({ concepto: "CUOTA", monto: "" });
+        draw();
+      }));
+      $$('#modal [data-close-modal]').forEach(b => b.addEventListener("click", closeModal));
+      $("#guardarVenta").addEventListener("click", () => {
+        const cc = calc();
+        if (!cc.listo) return;
+        const id = "VTA-" + String(300 + state.ventas.length + 1).padStart(4, "0");
+        state.ventas.push({ id, persona: personaId, lotes: cc.nLotes, total: cc.precioTotal });
+        const per = state.personas.find(x => x.id === personaId);
+        if (per) per.estado = "SOCIO";
+        save();
+        closeModal();
+        closeSheet();
+        render();
+        toast("Venta " + id + " guardada · " + per.nombre + " ahora es socio");
+      });
+      refresh();
+    }
+
+    draw();
+    $("#modalScrim").classList.add("open");
+  }
+  function closeModal() { $("#modalScrim").classList.remove("open"); }
+
+  // ---------- toast ----------
+  let toastT;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastT);
+    toastT = setTimeout(() => t.classList.remove("show"), 3200);
+  }
+
+  // ---------- top-level render ----------
+  function render() {
+    $$(".nav-btn").forEach(b => b.setAttribute("aria-current", String(b.dataset.view === currentView)));
+    $("#nav-bandeja-ct").textContent = visibleCitas().length;
+    $("#nav-leads-ct").textContent = visiblePersonas().length;
+
+    const r = EQUIPO[role];
+    $("#scopeline").innerHTML = veTodo()
+      ? `<b>${esc(r.nombre)}</b> ve <b>todo</b> el equipo, en vivo${role === "MKT" ? " · y reasigna leads" : ""}.`
+      : `<b>${esc(r.nombre)}</b> (asesora) ve <b>solo sus leads</b> y su proceso.`;
+
+    const v = $("#view");
+    if (currentView === "bandeja") v.innerHTML = renderBandeja();
+    else if (currentView === "leads") v.innerHTML = renderLeads();
+    else v.innerHTML = renderTablero();
+
+    // wire per-view
+    $$('[data-persona]', v).forEach(el => {
+      if (el.tagName === "SELECT") {
+        el.addEventListener("change", () => {
+          const p = state.personas.find(x => x.id === el.dataset.persona);
+          const prev = p.asesora;
+          p.asesora = el.value || null;
+          save();
+          render();
+          toast(`${p.nombre}: ${prev ? EQUIPO[prev].nombre : "sin asignar"} → ${p.asesora ? EQUIPO[p.asesora].nombre : "sin asignar"}`);
+        });
+      } else {
+        el.addEventListener("click", () => openFicha(el.dataset.persona));
+      }
+    });
+    const bi = $("#btnImport"); if (bi) bi.addEventListener("click", openImport);
+    const br = $("#btnRestore"); if (br) br.addEventListener("click", restaurarEjemplo);
+  }
+
+  // ---------- events ----------
+  $$(".nav-btn").forEach(b => b.addEventListener("click", () => { currentView = b.dataset.view; render(); }));
+  $$("#roleseg button").forEach(b => b.addEventListener("click", () => {
+    role = b.dataset.role;
+    $$("#roleseg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    closeSheet();
+    render();
+  }));
+  $("#scrim").addEventListener("click", closeSheet);
+  $("#modalScrim").addEventListener("click", e => { if (e.target === $("#modalScrim")) closeModal(); });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { closeSheet(); closeModal(); }
+  });
+
+  render();
+})();
+</script>

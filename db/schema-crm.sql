@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS mensajes (
   -- recibe el 200 a tiempo, y sin esto el mismo mensaje se procesaba de nuevo.
   -- NULL en los salientes, que no vienen de un webhook.
   wa_id      TEXT,
+  -- Adjunto (2026-09-04). `media_url` apunta al bucket publico de Supabase
+  -- Storage (ver lib/storage.js), no al link temporal de Meta -- ese vence
+  -- en minutos. `media_tipo` guarda el `type` que mando el webhook de Meta
+  -- ('image' por ahora); NULL en un mensaje sin adjunto, que son casi todos.
+  media_url  TEXT,
+  media_tipo TEXT,
   creado_en  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

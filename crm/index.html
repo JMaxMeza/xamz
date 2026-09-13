@@ -218,6 +218,29 @@
   .filtros { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
   .filtros button { border-radius: 20px; }
   .filtros .activa { background: var(--tinta); color: var(--fondo); border-color: var(--tinta); }
+  /* Segunda fila de chips: filtra por etapa del embudo, aparte e independiente
+     del filtro Pendientes/Todas (que sigue siendo por `atendido`). Un poco
+     más chicos para que se lea como el filtro secundario que es. */
+  .filtros-etapa { margin-bottom: 14px; }
+  .filtros-etapa button { border-radius: 20px; font-size: 12px; padding: 5px 11px; }
+  .filtros-etapa .activa { background: var(--tinta); color: var(--fondo); border-color: var(--tinta); }
+
+  /* ── Etapas del embudo ──
+     Mismo criterio de color en el pill y en el borde del select: nuevo/
+     contactado en gris (arranque), cotizado/negociando en ámbar (en curso),
+     ganado en verde, perdido en el color de alerta del panel. */
+  .pill.etapa-nuevo, .pill.etapa-contactado { color: var(--acero); }
+  .pill.etapa-cotizado, .pill.etapa-negociando { border-color: var(--senal); color: var(--senal); }
+  .pill.etapa-ganado { border-color: var(--ok); color: var(--ok); }
+  .pill.etapa-perdido { border-color: var(--oxido); color: var(--oxido); }
+  .select-etapa {
+    font-family: var(--dato); font-size: 12px; color: var(--tinta);
+    background: var(--fondo); border: 1px solid var(--linea); border-radius: 4px;
+    padding: 5px 8px;
+  }
+  .select-etapa.etapa-cotizado, .select-etapa.etapa-negociando { border-color: var(--senal); }
+  .select-etapa.etapa-ganado { border-color: var(--ok); }
+  .select-etapa.etapa-perdido { border-color: var(--oxido); }
 
   /* ── Chats ── */
   .chats { display: grid; grid-template-columns: 290px 1fr; gap: 14px; min-height: 60vh; }
@@ -272,6 +295,22 @@
   .burbuja.out { background: var(--oxido-sup); margin-left: auto; border-bottom-right-radius: 2px; border: 1px solid var(--linea-suave); }
   .burbuja.asesor { background: var(--oxido); color: #fff; }
   .burbuja.asesor .quien, .burbuja.asesor .hora { color: rgba(255,255,255,.75); }
+  .burbuja-img {
+    display: block; max-width: 100%; max-height: 260px; border-radius: 6px;
+    margin: 2px 0 4px; cursor: zoom-in;
+  }
+
+  /* ── Adjuntar imagen ──
+     Boton chico al lado de Enviar, no reemplaza el textarea: la mayoria de
+     los mensajes del asesor siguen siendo texto. */
+  .btn-adjuntar {
+    flex: 0 0 auto; width: 44px; padding: 0; background: none;
+    border: 1px solid var(--linea); border-radius: 4px; color: var(--acero);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-adjuntar:hover { border-color: var(--oxido); color: var(--oxido); }
+  .btn-adjuntar svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+  .btn-adjuntar.cargando { opacity: .6; pointer-events: none; }
 
   .redactar { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--linea); }
   .redactar textarea {
@@ -339,6 +378,8 @@
       display: inline-flex; align-items: center; justify-content: center;
     }
     nav button { min-height: 46px; }
+    .select-etapa { min-height: 44px; }
+    .filtros-etapa button { min-height: 38px; }
     .item-chat { padding: 13px 14px; min-height: 58px; }
     .volver { min-width: 44px; justify-content: center; }
     .check-atendido { min-height: 44px; }
@@ -505,6 +546,15 @@
         <button class="btn-sec activa" data-filtro="pendientes">Pendientes</button>
         <button class="btn-sec" data-filtro="todas">Todas</button>
       </div>
+      <div class="filtros filtros-etapa" id="filtros-etapa">
+        <button class="btn-sec activa" data-etapa="">Todas las etapas</button>
+        <button class="btn-sec" data-etapa="nuevo">Nuevo</button>
+        <button class="btn-sec" data-etapa="contactado">Contactado</button>
+        <button class="btn-sec" data-etapa="cotizado">Cotizado</button>
+        <button class="btn-sec" data-etapa="negociando">Negociando</button>
+        <button class="btn-sec" data-etapa="ganado">Ganado</button>
+        <button class="btn-sec" data-etapa="perdido">Perdido</button>
+      </div>
       <div id="lista-solicitudes"></div>
     </section>
 
@@ -532,6 +582,10 @@
           <div class="mensajes" id="zona-mensajes"><div class="vacio">Seleccioná una conversación de la lista.</div></div>
           <div class="aviso-envio" id="aviso-envio"></div>
           <div class="redactar" id="zona-redactar" style="display:none">
+            <input type="file" id="campo-imagen" accept="image/*" class="oculto" aria-hidden="true">
+            <button class="btn-adjuntar" id="boton-adjuntar" type="button" title="Adjuntar imagen" aria-label="Adjuntar imagen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5 12.5 20a4.5 4.5 0 0 1-6.36-6.36L14.6 5.1a3 3 0 0 1 4.24 4.24l-8.49 8.49a1.5 1.5 0 0 1-2.12-2.12l7.07-7.07"/></svg>
+            </button>
             <textarea id="campo-mensaje" placeholder="Escribir como asesor…"
                       aria-label="Mensaje para el cliente"></textarea>
             <button id="boton-enviar">Enviar</button>
@@ -596,6 +650,15 @@
   var chatAbierto = null;
   var correoAbierto = null;
   var filtroSolicitudes = 'pendientes';
+  // Filtro por etapa del embudo, independiente del de arriba (que sigue
+  // siendo por `atendido`): '' = todas las etapas. Mismas 6 que valida
+  // `api/crm.js` y el CHECK de la base.
+  var filtroEtapa = '';
+  var ETAPAS = ['nuevo', 'contactado', 'cotizado', 'negociando', 'ganado', 'perdido'];
+  var ETAPA_LABEL = {
+    nuevo: 'Nuevo', contactado: 'Contactado', cotizado: 'Cotizado',
+    negociando: 'Negociando', ganado: 'Ganado', perdido: 'Perdido'
+  };
   // La clave lleva `_v2` desde el paso a Postgres: la identidad de `alertas`
   // arranca en 1 y el navegador del asesor guardaba la marca alta que dejo
   // n8n. Con la clave vieja, ninguna alerta nueva volveria a sonar hasta
@@ -608,7 +671,7 @@
   // aplicar sobre cada respuesta del sondeo mientras siguen aca: un sondeo que
   // salio ANTES del clic llega con el valor viejo, y sin esto la pantalla se
   // revertia sola a los 45 s sin ninguna explicacion.
-  var pendientes = { atendido: {}, bot: {}, alertas: {} };
+  var pendientes = { atendido: {}, etapa: {}, bot: {}, alertas: {} };
 
   function $(id) { return document.getElementById(id); }
 
@@ -843,6 +906,10 @@
       var valor = pendientes.atendido[folio];
       datos.registros.forEach(function (r) { if (r.folio === folio) r.atendido = valor; });
     });
+    Object.keys(pendientes.etapa).forEach(function (folio) {
+      var valor = pendientes.etapa[folio];
+      datos.registros.forEach(function (r) { if (r.folio === folio) r.etapa = valor; });
+    });
     Object.keys(pendientes.bot).forEach(function (tel) {
       var valor = pendientes.bot[tel];
       var conv = conversacionDe(tel);
@@ -919,9 +986,14 @@
     badge.setAttribute('aria-label', sinAtender.length + ' solicitudes pendientes');
     badge.classList.toggle('visible', sinAtender.length > 0);
     if (filtroSolicitudes === 'pendientes') lista = sinAtender;
+    // Filtro por etapa, independiente del de arriba: se combinan con Y. Un
+    // registro sin `etapa` (fila vieja, previa a la migracion) cuenta como
+    // 'nuevo' — mismo default que la base.
+    if (filtroEtapa) lista = lista.filter(function (r) { return (r.etapa || 'nuevo') === filtroEtapa; });
     if (!lista.length) {
       cont.innerHTML = '<div class="vacio">' +
-        (filtroSolicitudes === 'pendientes' ? 'No hay solicitudes pendientes.' : 'No hay solicitudes.') +
+        (filtroSolicitudes === 'pendientes' ? 'No hay solicitudes pendientes' : 'No hay solicitudes') +
+        (filtroEtapa ? ' en «' + ETAPA_LABEL[filtroEtapa] + '».' : '.') +
         '</div>';
       return;
     }
@@ -949,8 +1021,14 @@
       // El correo del cliente ya esta en la solicitud: el asesor no deberia
       // tener que copiarlo a otra pestaña para escribirle.
       var botonCorreo = r.email ? '<button class="btn-sec" data-abrir-correo="' + escapar(String(r.email).trim().toLowerCase()) + '">Correo</button>' : '';
+      var etapa = r.etapa || 'nuevo';
+      var selectEtapa = '<select class="select-etapa etapa-' + etapa + '" data-folio-etapa="' + escapar(r.folio) + '" aria-label="Etapa de ' + escapar(r.nombre) + '">' +
+        ETAPAS.map(function (e) {
+          return '<option value="' + e + '"' + (e === etapa ? ' selected' : '') + '>' + ETAPA_LABEL[e] + '</option>';
+        }).join('') + '</select>';
       return '<div class="solicitud' + (r.atendido ? ' atendida' : '') + '">' +
         '<div class="sol-cab"><span class="folio">' + escapar(r.folio) + '</span>' +
+        '<span class="pill etapa-' + etapa + '">' + ETAPA_LABEL[etapa] + '</span>' +
         '<span class="sol-nombre">' + escapar(r.nombre) + '</span>' +
         (r.empresa ? '<span style="color:var(--acero)">· ' + escapar(r.empresa) + '</span>' : '') +
         '<span class="sol-fecha">' + fechaCorta(r.createdAt) + '</span></div>' +
@@ -964,6 +1042,7 @@
         '</div>' + cuestionario +
         '<div class="sol-acciones">' +
         '<label class="check-atendido"><input type="checkbox" data-folio="' + escapar(r.folio) + '"' + (r.atendido ? ' checked' : '') + '> Atendido</label>' +
+        selectEtapa +
         botonChat + botonCorreo +
         '<a class="btn-sec" style="text-decoration:none" href="https://wa.me/' + soloDigitos(r.telefono) + '" target="_blank" rel="noopener">WhatsApp directo</a>' +
         '</div></div>';
@@ -984,6 +1063,24 @@
           datos.registros.forEach(function (r) { if (r.folio === folio) r.atendido = previo; });
           pintarSolicitudes();
           avisar('No se pudo guardar «atendido» en ' + folio + ': ' + motivo, true);
+        });
+      });
+    });
+    cont.querySelectorAll('[data-folio-etapa]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var folio = sel.getAttribute('data-folio-etapa');
+        var nueva = sel.value;
+        var previa = 'nuevo';
+        datos.registros.forEach(function (r) { if (r.folio === folio) { previa = r.etapa || 'nuevo'; r.etapa = nueva; } });
+        pendientes.etapa[folio] = nueva;
+        pintarSolicitudes();
+        accion({ action: 'cambiar_etapa', folio: folio, etapa: nueva }, function () {
+          if (pendientes.etapa[folio] === nueva) delete pendientes.etapa[folio];
+        }, function (motivo) {
+          delete pendientes.etapa[folio];
+          datos.registros.forEach(function (r) { if (r.folio === folio) r.etapa = previa; });
+          pintarSolicitudes();
+          avisar('No se pudo guardar la etapa de ' + folio + ': ' + motivo, true);
         });
       });
     });
@@ -1101,9 +1198,19 @@
         var direccion = m.direccion === 'out' ? 'out' : 'in';
         var claseExtra = direccion === 'out' && m.autor === 'asesor' ? ' asesor' : '';
         var quien = direccion === 'in' ? 'Cliente' : (m.autor === 'asesor' ? 'Asesor' : 'Bot');
+        // `mediaUrl` viene del bucket publico de Storage (lib/storage.js), no
+        // de Meta directo: el link temporal de Meta vence en minutos y para
+        // cuando el asesor mira el panel ya no sirve.
+        var imagen = m.mediaUrl
+          ? '<a href="' + escapar(m.mediaUrl) + '" target="_blank" rel="noopener">' +
+            '<img class="burbuja-img" src="' + escapar(m.mediaUrl) + '" alt="Imagen adjunta" loading="lazy"></a>'
+          : '';
+        // El texto puede venir vacio si la imagen no trajo pie de foto: no
+        // dejar un <span> vacio despues de la imagen.
+        var cuerpo = m.texto ? escapar(m.texto) : '';
         return '<div class="burbuja ' + direccion + claseExtra + '">' +
           '<span class="quien">' + quien + '</span>' +
-          escapar(m.texto) +
+          imagen + cuerpo +
           '<span class="hora">' + fechaCorta(m.createdAt) + '</span></div>';
       }).join('');
     }
@@ -1172,6 +1279,67 @@
         '. El mensaje sigue escrito, se puede reintentar.';
       aviso.style.display = 'block';
     });
+  }
+
+  // Mismo tope que valida `api/crm.js` (ver el comentario de alli sobre el
+  // limite real de Vercel para el cuerpo de una funcion serverless).
+  var LIMITE_IMAGEN_BYTES = 3 * 1024 * 1024;
+
+  function subirImagenSeleccionada(archivo) {
+    if (!archivo || !chatAbierto) return;
+    if (!archivo.type || archivo.type.indexOf('image/') !== 0) {
+      avisar('Solo se pueden adjuntar imágenes.', true);
+      return;
+    }
+    if (archivo.size > LIMITE_IMAGEN_BYTES) {
+      avisar('La imagen pesa más de 3 MB, es demasiado grande para enviar.', true);
+      return;
+    }
+    var boton = $('boton-adjuntar');
+    boton.classList.add('cargando');
+    var lector = new FileReader();
+    lector.onerror = function () {
+      boton.classList.remove('cargando');
+      avisar('No se pudo leer la imagen.', true);
+    };
+    lector.onload = function () {
+      // El resultado es "data:image/jpeg;base64,AAAA…"; el servidor solo
+      // quiere lo que va despues de la coma.
+      var datosUrl = String(lector.result || '');
+      var coma = datosUrl.indexOf(',');
+      var base64 = coma >= 0 ? datosUrl.slice(coma + 1) : '';
+      var telefono = telefonoCanonico(chatAbierto);
+      var caption = $('campo-mensaje').value.trim();
+      api({ action: 'enviar_imagen', telefono: telefono, datos: base64, mimeType: archivo.type, caption: caption })
+        .then(function (j) {
+          boton.classList.remove('cargando');
+          var aviso = $('aviso-envio');
+          if (j && j.ok) {
+            $('campo-mensaje').value = '';
+            crecer($('campo-mensaje'), 140);
+            aviso.style.display = 'none';
+            if (j.aviso) avisar(j.aviso, true);
+            // Optimista con la imagen LOCAL (el servidor recien genera la URL
+            // publica al subirla a Storage): el proximo sondeo trae la fila
+            // real y reemplaza esta entera, como ya pasa con `enviarMensaje`.
+            datos.mensajes.push({
+              id: 1e9 + datos.mensajes.length, telefono: telefono, direccion: 'out',
+              texto: caption, autor: 'asesor', mediaUrl: datosUrl, createdAt: new Date().toISOString(),
+            });
+            pintarChat(chatAbierto, false);
+          } else {
+            aviso.textContent = 'No se pudo enviar la imagen: ' + ((j && j.error) || 'error desconocido');
+            aviso.style.display = 'block';
+          }
+        }).catch(function (e) {
+          boton.classList.remove('cargando');
+          if (e && e.message === 'clave') { salir('La sesión no es válida. Ingresá la clave otra vez.'); return; }
+          var aviso = $('aviso-envio');
+          aviso.textContent = 'No se pudo enviar la imagen: ' + ((e && e.message) || 'error de red');
+          aviso.style.display = 'block';
+        });
+    };
+    lector.readAsDataURL(archivo);
   }
 
   // ── Correos ──
@@ -1481,7 +1649,7 @@
     clave = '';
     chatAbierto = null;
     correoAbierto = null;
-    pendientes = { atendido: {}, bot: {}, alertas: {} };
+    pendientes = { atendido: {}, etapa: {}, bot: {}, alertas: {} };
     datos = { registros: [], conversaciones: [], mensajes: [], alertas: [], correos: [], mensajes_recortados: false, correos_recortados: false };
     pararSondeo();
     document.title = 'Mining Big · CRM';
@@ -1545,16 +1713,29 @@
       });
     });
   }
-  document.querySelectorAll('.filtros button').forEach(function (b) {
+  document.querySelectorAll('.filtros button[data-filtro]').forEach(function (b) {
     b.addEventListener('click', function () {
       filtroSolicitudes = b.getAttribute('data-filtro');
-      document.querySelectorAll('.filtros button').forEach(function (x) { x.classList.toggle('activa', x === b); });
+      document.querySelectorAll('.filtros button[data-filtro]').forEach(function (x) { x.classList.toggle('activa', x === b); });
+      pintarSolicitudes();
+    });
+  });
+  document.querySelectorAll('#filtros-etapa button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      filtroEtapa = b.getAttribute('data-etapa');
+      document.querySelectorAll('#filtros-etapa button').forEach(function (x) { x.classList.toggle('activa', x === b); });
       pintarSolicitudes();
     });
   });
   $('palanca-bot').addEventListener('click', alternarBot);
   $('palanca-bot').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternarBot(); } });
   $('boton-enviar').addEventListener('click', enviarMensaje);
+  $('boton-adjuntar').addEventListener('click', function () { $('campo-imagen').click(); });
+  $('campo-imagen').addEventListener('change', function () {
+    var archivo = this.files && this.files[0];
+    subirImagenSeleccionada(archivo);
+    this.value = ''; // para poder elegir el mismo archivo dos veces seguidas
+  });
   $('campo-mensaje').addEventListener('input', function () { crecer(this, 140); });
   $('campo-correo').addEventListener('input', function () { crecer(this, 240); });
   $('campo-mensaje').addEventListener('keydown', function (e) {
